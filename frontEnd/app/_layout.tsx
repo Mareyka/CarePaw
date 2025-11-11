@@ -1,33 +1,62 @@
+import { theme } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useRalewayFonts } from "@/hooks/useRalewayFonts";
+import {
+  DefaultTheme,
+  ThemeProvider
+} from "@react-navigation/native";
+import Constants from "expo-constants";
 import { Stack } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
+import "react-native-reanimated";
+
+export const unstable_settings = {
+  anchor: "about",
+};
 
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
+  const { areFontsLoaded, errorFontsLoaded } = useRalewayFonts();
+
+  useEffect(() => {
+    if (areFontsLoaded || errorFontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [areFontsLoaded, errorFontsLoaded]);
+
+  if (!areFontsLoaded && !errorFontsLoaded) {
+    return null;
+  }
+
   return (
-    <View style={styles.container}>
-      <Stack
-        screenOptions={{
-          contentStyle: { backgroundColor: "#FFFFFF" },
-        }}
-      />
-      <View style={styles.textContainer}>
-        <Text style={styles.text}>Hello, World!</Text>
-      </View>
+    <View style={styles.rootContainer}>
+      <ThemeProvider value={DefaultTheme}>
+        <Stack
+          initialRouteName="navigateToAllPages"
+          screenOptions={{
+            contentStyle: { backgroundColor: theme.color.appBackground },
+          }}
+          layout={(props) => <View style={styles.container} {...props} />}
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  rootContainer: {
+    flex: 1,
+    backgroundColor: theme.color.appBackground,
+  },
   container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  textContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  text: {
-    fontSize: 24,
-    color: "#000000",
+    height: "100%",
+    paddingTop: Constants.statusBarHeight,
+    backgroundColor: theme.color.appBackground,
   },
 });
