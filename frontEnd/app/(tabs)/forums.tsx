@@ -1,13 +1,23 @@
 import { theme } from "@/constants/theme";
-import { Typography } from "@/shared/ui/Typography";
 import { buildForumChatHeaderOptions } from "@/shared/ui/header";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
+import { ForumCategory } from "@/components/forum-category";
+import { ForumRow } from "@/components/forum-row";
+import { useForums } from "@/hooks/useForums";
 
 export default function ForumsOrChatsScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const activeMode = (mode as string) || "forums";
+  const router = useRouter();
+  const { categories, chats, isLoading } = useForums(
+    activeMode === "forums" ? "forums" : "chats"
+  );
+
+  const handleForumPress = (forumId: string) => {
+    console.log("Navigate to forum:", forumId);
+  };
 
   return (
     <>
@@ -15,55 +25,32 @@ export default function ForumsOrChatsScreen() {
 
       {activeMode === "forums" ? (
         <ScrollView contentContainerStyle={styles.container}>
-          <View style={styles.block}>
-            <Typography type="title" style={styles.sectionTitle}>
-              Дрессировка
-            </Typography>
-            {["Когда начинать дресс...", "Основы дрессировки", "Техники дрессировки"].map(
-              (t, i) => (
-                <View key={i} style={styles.forumRow}>
-                  <View style={styles.circle} />
-                  <View style={{ flex: 1 }}>
-                    <Typography type="title" style={styles.rowTitle}>
-                      {t}
-                    </Typography>
-                    <Typography type="label">Последнее сообщение</Typography>
-                  </View>
-                </View>
-              )
-            )}
-          </View>
-          <View style={styles.block}>
-            <Typography type="title" style={styles.sectionTitle}>
-              Вакцинация
-            </Typography>
-            {["Стоит ли вакцинировать", "Прививка от клещей"].map((t, i) => (
-              <View key={i} style={styles.forumRow}>
-                <View style={styles.circle} />
-                <View style={{ flex: 1 }}>
-                  <Typography type="title" style={styles.rowTitle}>
-                    {t}
-                  </Typography>
-                  <Typography type="label">Последнее сообщение</Typography>
-                </View>
-              </View>
-            ))}
-          </View>
+          {isLoading ? (
+            <View />
+          ) : (
+            categories.map((category) => (
+              <ForumCategory
+                key={category.id}
+                category={category}
+                onForumPress={handleForumPress}
+              />
+            ))
+          )}
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={styles.container}>
           <View style={styles.block}>
-            {new Array(10).fill(0).map((_, i) => (
-              <View key={i} style={styles.forumRow}>
-                <View style={styles.circle} />
-                <View style={{ flex: 1 }}>
-                  <Typography type="title" style={styles.rowTitle}>
-                    Чаты
-                  </Typography>
-                  <Typography type="label">Последнее сообщение</Typography>
-                </View>
-              </View>
-            ))}
+            {isLoading
+              ? null
+              : chats.map((chat) => (
+                  <ForumRow
+                    key={chat.id}
+                    title={chat.title}
+                    lastMessage={chat.lastMessage}
+                    avatarUri={chat.avatarUri}
+                    onPress={() => handleForumPress(chat.id)}
+                  />
+                ))}
           </View>
         </ScrollView>
       )}
@@ -73,37 +60,13 @@ export default function ForumsOrChatsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 16,
     paddingHorizontal: 12,
     paddingBottom: 24,
     backgroundColor: theme.color.appBackground,
-    gap: 16,
+    gap: 8,
   },
   block: {
     gap: 16,
-  },
-  sectionTitle: {
-    color: theme.color.background.darkGreen,
-    fontSize: 18,
-    marginBottom: 4,
-  },
-  forumRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 8,
-    borderBottomColor: "rgba(0,0,0,0.08)",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  circle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.color.background.lightGreen,
-  },
-  rowTitle: {
-    fontSize: 16,
-    color: theme.color.background.darkGreen,
   },
 });
 

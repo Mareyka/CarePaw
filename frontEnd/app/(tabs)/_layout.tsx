@@ -72,7 +72,6 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   container: {
     height: "100%",
-    paddingTop: 24,
     paddingHorizontal: 8,
     backgroundColor: theme.color.appBackground,
   },
