@@ -1,7 +1,8 @@
 import SearchHeaderLeftIcon from "@/assets/icons/SearchHeaderLeftIcon";
 import SearchHeaderRightIcon from "@/assets/icons/SearchHeaderRightIcon";
+import { ArrowLeftIcon } from "@/assets/icons/ArrowLeftIcon";
 import { theme } from "@/constants/theme";
-import { Image } from "expo-image";
+import { Typography } from "@/shared/ui/Typography";
 import { useGlobalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -14,13 +15,7 @@ export function HeaderBackButton({ onPress }: { onPress?: () => void }) {
       style={{ paddingHorizontal: 12, paddingVertical: 8 }}
       hitSlop={8}
     >
-      <Image
-        source={require("@/assets/images/arrow-left.png")}
-        style={{
-          width: 26,
-          height: 26,
-        }}
-      />
+      <ArrowLeftIcon size={26} />
     </Pressable>
   );
 }
@@ -135,6 +130,33 @@ export function buildForumChatHeaderOptions() {
   } as const;
 }
 
+type ChatHeaderProps = {
+  name: string;
+  avatarUri?: string;
+};
+
+export function ChatHeader({ name, avatarUri }: ChatHeaderProps) {
+  return (
+    <View style={styles.chatHeaderContainer}>
+      <HeaderBackButton />
+      <View style={styles.chatHeaderContent}>
+        <Typography type="title" style={styles.chatHeaderName}>
+          {name}
+        </Typography>
+      </View>
+    </View>
+  );
+}
+
+export function buildChatHeaderOptions({ name, avatarUri }: ChatHeaderProps) {
+  return {
+    headerShown: true,
+    header: () => <ChatHeader name={name} avatarUri={avatarUri} />,
+    headerStyle: { backgroundColor: theme.color.background.usual },
+    headerShadowVisible: false,
+  } as const;
+}
+
 const styles = StyleSheet.create({
   searchHeaderContainer: {
     height: 56,
@@ -170,5 +192,20 @@ const styles = StyleSheet.create({
   },
   navTextActive: {
     color: theme.color.background.darkGreen,
+  },
+  chatHeaderContainer: {
+    height: 56,
+    backgroundColor: theme.color.background.usual,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  chatHeaderContent: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  chatHeaderName: {
+    color: theme.color.background.default,
+    fontSize: 18,
   },
 });

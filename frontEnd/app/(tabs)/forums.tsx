@@ -17,7 +17,14 @@ export default function ForumsOrChatsScreen() {
   );
 
   const handleForumPress = (forumId: string) => {
-    console.log("Navigate to forum:", forumId);
+    if (activeMode === "chats") {
+      router.push({
+        pathname: "/chat/[id]",
+        params: { id: forumId },
+      } as any);
+    } else {
+      console.log("Navigate to forum:", forumId);
+    }
   };
 
   return (
