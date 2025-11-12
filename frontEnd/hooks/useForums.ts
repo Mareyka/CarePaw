@@ -33,7 +33,7 @@ const fetchChats = async (): Promise<Forum[]> => {
       resolve(
         new Array(10).fill(0).map((_, i) => ({
           id: `chat-${i}`,
-          title: "Чаты",
+          title: `Чаты-${i}`,
           lastMessage: "Последнее сообщение",
         }))
       );

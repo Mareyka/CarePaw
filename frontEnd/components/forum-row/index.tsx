@@ -51,9 +51,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingVertical: 8,
-    borderBottomColor: "rgba(0,0,0,0.08)",
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   avatar: {
     width: 40,

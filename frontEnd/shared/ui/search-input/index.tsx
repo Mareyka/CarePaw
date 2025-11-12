@@ -26,7 +26,7 @@ export const SearchInput = ({
     <View style={[styles.container, containerStyle]}>
       <TextInput
         placeholder={placeholder}
-        placeholderTextColor={theme.color.text + "99"}
+        placeholderTextColor={theme.color.text}
         style={styles.input}
         {...props}
       />
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
-    borderRadius: 20,
+    borderRadius: 15,
     paddingLeft: 12,
     paddingRight: 8,
     height: 40,

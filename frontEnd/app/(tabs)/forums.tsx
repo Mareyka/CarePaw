@@ -6,6 +6,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { ForumCategory } from "@/components/forum-category";
 import { ForumRow } from "@/components/forum-row";
 import { useForums } from "@/hooks/useForums";
+import SearchInput from "@/shared/ui/search-input";
 
 export default function ForumsOrChatsScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
@@ -25,6 +26,10 @@ export default function ForumsOrChatsScreen() {
 
       {activeMode === "forums" ? (
         <ScrollView contentContainerStyle={styles.container}>
+          <View>
+              <SearchInput
+               placeholder = {"Поиск по тематике..."}/>
+            </View>
           {isLoading ? (
             <View />
           ) : (
@@ -39,7 +44,7 @@ export default function ForumsOrChatsScreen() {
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={styles.container}>
-          <View style={styles.block}>
+          <View>
             {isLoading
               ? null
               : chats.map((chat) => (
@@ -62,11 +67,9 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 12,
     paddingBottom: 24,
+    paddingTop: 8,
     backgroundColor: theme.color.appBackground,
     gap: 8,
-  },
-  block: {
-    gap: 16,
   },
 });
 

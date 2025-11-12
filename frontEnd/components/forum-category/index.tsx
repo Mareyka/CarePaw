@@ -13,9 +13,11 @@ type ForumCategoryProps = {
 export const ForumCategory = ({ category, onForumPress }: ForumCategoryProps) => {
   return (
     <View style={styles.block}>
-      <Typography type="title" style={styles.sectionTitle}>
-        {category.title}
-      </Typography>
+      <View style={styles.titleContainer}>
+        <Typography type="title" style={styles.sectionTitle}>
+          {category.title}
+        </Typography>
+      </View>
       {category.forums.map((forum) => (
         <ForumRow
           key={forum.id}
@@ -31,12 +33,18 @@ export const ForumCategory = ({ category, onForumPress }: ForumCategoryProps) =>
 
 const styles = StyleSheet.create({
   block: {
-    gap: 16,
+    gap: 8,
+  },
+  titleContainer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.color.background.darkGreen,
+    borderBottomColor: theme.color.background.darkGreen,
+    paddingVertical: 4,
   },
   sectionTitle: {
     color: theme.color.background.darkGreen,
     fontSize: 18,
-    marginBottom: 4,
   },
 });
 
