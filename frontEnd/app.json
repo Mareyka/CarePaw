@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "garden-fe",
-    "slug": "garden-fe",
+    "name": "Care-Paw",
+    "slug": "care-paw",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "gardenfe",
+    "scheme": "carepaw",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
