@@ -17,17 +17,12 @@ export default function NavigateToAllPages() {
                     </ThemedButton>
                 </View>
                 <View style={styles.listItem}>
-                    <ThemedButton onPress={() => router.push("/(tabs)/forums")} textAlign="center">
-                        Чат
-                    </ThemedButton>
-                </View>
-                <View style={styles.listItem}>
                     <ThemedButton onPress={() => router.push("/(tabs)/search")} textAlign="center">
                         Поиск
                     </ThemedButton>
                 </View>
                 <View style={styles.listItem}>
-                    <ThemedButton onPress={() => router.push("/(tabs)/forums")} textAlign="center">
+                    <ThemedButton onPress={() => router.push("/new-post")} textAlign="center">
                         Добавление поста
                     </ThemedButton>
                 </View>
