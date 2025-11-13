@@ -7,7 +7,7 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 export default function SearchScreen() {
     return (
         <>
-            <View>
+            <View style={styles.searchInputContainer}>
               <SearchInput />
             </View>
             <ScrollView
@@ -56,8 +56,12 @@ export default function SearchScreen() {
     );
 }
 const styles = StyleSheet.create({
+
+  searchInputContainer: {
+    marginTop: 16,
+  },
     scrollerWrapper: {
-      marginTop: 32,
+      marginTop: 16,
     },
     scroller: {
       flexDirection: "row",

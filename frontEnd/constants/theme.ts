@@ -16,7 +16,7 @@ export const theme = {
       darkGreen: "#5D684F",
       lightGreen: "#D0D1B5",
     },
-    text: "#6C5A55",
+    text: "#5D684F",
     lightText: "#FFF8E8",
     appBackground: "#ECE1D1",
   },
