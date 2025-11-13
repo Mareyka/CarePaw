@@ -27,8 +27,8 @@ type HeaderOptionsArgs = {
 export function buildDefaultHeaderOptions({ title }: HeaderOptionsArgs) {
   return {
     title,
-    headerTitleStyle: { color: theme.color.text },
-    headerStyle: { backgroundColor: theme.color.background.default },
+    headerTitleStyle: { color: theme.color.lightText },
+    headerStyle: { backgroundColor: theme.color.background.usual },
     headerShadowVisible: false,
     headerLeft: () => <HeaderBackButton />,
   } as const;
