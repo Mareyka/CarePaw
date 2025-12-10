@@ -35,13 +35,17 @@ export default function RootLayout() {
     <View style={styles.rootContainer}>
       <ThemeProvider value={DefaultTheme}>
         <Stack
-          initialRouteName="navigateToAllPages"
+          initialRouteName="(tabs)" // Начинаем сразу с вкладок
           screenOptions={{
             contentStyle: { backgroundColor: theme.color.appBackground },
           }}
           layout={(props) => <View style={styles.container} {...props} />}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* Экран создания нового поста в корне */}
+          <Stack.Screen name="new-post" options={{ headerShown: false }} />
+          {/* Другие экраны в корне */}
+          <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

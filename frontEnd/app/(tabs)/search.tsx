@@ -1,29 +1,31 @@
 import UserCard from "@/components/userCard";
 import { theme } from "@/constants/theme";
 import SearchInput from "@/shared/ui/search-input";
+import Header from "@/components/Header";
 import { Typography } from "@/shared/ui/Typography";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 export default function SearchScreen() {
     return (
         <>
+            <Header />
             <View style={styles.searchInputContainer}>
               <SearchInput />
             </View>
             <ScrollView
-        style={styles.scrollerWrapper}
-        contentContainerStyle={styles.scroller}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-      >
-        {new Array(10).fill(0).map((item, index) => {
-          return (
-            <View key={index}>
-              <UserCard />
-            </View>
-          );
-        })}
-      </ScrollView>
+              style={styles.scrollerWrapper}
+              contentContainerStyle={styles.scroller}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              {new Array(10).fill(0).map((item, index) => {
+                return (
+                  <View key={index}>
+                    <UserCard />
+                  </View>
+                );
+              })}
+            </ScrollView>
 
             <View style={styles.otherSection}>
               <Typography type="title" style={styles.sectionTitle}>
