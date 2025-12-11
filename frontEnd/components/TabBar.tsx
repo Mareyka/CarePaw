@@ -22,7 +22,7 @@ const TabBar = () => {
     { 
       id: 'search', 
       icon: <Search_icon />,
-      route: '/(tabs)/search' // Поиск в (tabs)
+      route: '/search' 
     },
     { 
       id: 'add', 
@@ -44,7 +44,7 @@ const TabBar = () => {
   // Определяем активный таб
   const getActiveTab = () => {
     if (pathname.includes('/forums')) return 'chat';
-    if (pathname.includes('/(tabs)/search')) return 'search';
+    if (pathname.includes('/search')) return 'search';
     if (pathname === '/new-post' || pathname.includes('/new-post')) return 'add';
     if (pathname === '/profile' || pathname.includes('/profile')) return 'profile';
     if (pathname.includes('/questionnaire')) return null;

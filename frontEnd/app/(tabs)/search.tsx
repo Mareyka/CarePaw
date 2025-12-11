@@ -7,7 +7,7 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 export default function SearchScreen() {
     return (
-        <>
+        <View style={styles.container}>
             <Header />
             <View style={styles.searchInputContainer}>
               <SearchInput />
@@ -54,16 +54,19 @@ export default function SearchScreen() {
                 </Pressable>
               </View>
             </View>
-        </>
+        </View>
     );
 }
 const styles = StyleSheet.create({
 
   searchInputContainer: {
     marginTop: 16,
+    paddingHorizontal:12,
   },
     scrollerWrapper: {
       marginTop: 16,
+      paddingHorizontal:12,
+      maxHeight: 180,
     },
     scroller: {
       flexDirection: "row",
@@ -153,5 +156,10 @@ const styles = StyleSheet.create({
     },
     cardText: {
       color: theme.color.background.darkGreen,
+    },
+    container: {
+      backgroundColor: theme.color.appBackground,
+      height: '100%',
+      paddingBottom: 52,
     },
   });

@@ -1,7 +1,14 @@
 import React from "react";
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 
-const TabBar_button = ({ icon, isActive, onPress }) => {
+// Типы для пропсов
+interface TabBar_buttonProps {
+    icon: React.ReactElement<{ color?: string }>; // Иконка с опциональным пропсом color
+    isActive: boolean;
+    onPress: () => void;
+}
+
+const TabBar_button = ({ icon, isActive, onPress }: TabBar_buttonProps) => {
     return(
         <TouchableOpacity 
             style={[
@@ -11,7 +18,7 @@ const TabBar_button = ({ icon, isActive, onPress }) => {
             onPress={onPress}
         >
             {React.cloneElement(icon, {
-                color: isActive ? '#FFFFFF' : '#5D684F' // или любые другие цвета
+                color: isActive ? '#FFFFFF' : '#5D684F'
             })}
         </TouchableOpacity>
     );
