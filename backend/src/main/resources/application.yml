@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: animals
+  datasource:
+    url: jdbc:mysql://localhost:3306/animals?useSSL=false&serverTimezone=UTC
+    username: root
+    password: 12345678
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+server:
+  port: 8080
+
+app:
+  cors:
+    allowed-origins: "http://localhost:8081"
