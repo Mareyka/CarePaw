@@ -1,6 +1,7 @@
 import { theme } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRalewayFonts } from "@/hooks/useRalewayFonts";
+import { useFonts } from 'expo-font';
 import {
   DefaultTheme,
   ThemeProvider
@@ -20,14 +21,19 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const { areFontsLoaded, errorFontsLoaded } = useRalewayFonts();
+  // Добавлено: загрузка inglobal.ttf
+  const [fontsLoaded] = useFonts({
+    inglobal: require('@/assets/font/inglobal.ttf')
+  });
+  const allFontsLoaded = areFontsLoaded && fontsLoaded;
 
   useEffect(() => {
-    if (areFontsLoaded || errorFontsLoaded) {
+    if (allFontsLoaded || errorFontsLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [areFontsLoaded, errorFontsLoaded]);
+  }, [allFontsLoaded, errorFontsLoaded]);
 
-  if (!areFontsLoaded && !errorFontsLoaded) {
+  if (!allFontsLoaded && !errorFontsLoaded) {
     return null;
   }
 
