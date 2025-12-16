@@ -17,9 +17,15 @@ import { apiService } from '../api/service';
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState(''); // может быть username или email
+  const [authError, setAuthError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const [errors, setErrors] = useState<{
+  username?: string;
+  password?: string;
+  general?: string;
+}>({});
 
   const handleLogin = async () => {
     console.log('=== ВЫЗОВ ФУНКЦИИ LOGIN ===');
@@ -47,6 +53,7 @@ export default function LoginScreen() {
       
       if (userData) {
         // Успешная авторизация
+        setAuthError(null);
         console.log('🎉 Пользователь авторизован:', userData);
         Alert.alert('Успешно', `Добро пожаловать, ${userData.username}!`);
         
@@ -57,10 +64,18 @@ export default function LoginScreen() {
         console.log('❌ Авторизация не удалась');
         // Ошибка уже обработана в apiService
       }
-    } catch (error) {
-      console.error('💥 Ошибка в handleLogin:', error);
-      Alert.alert('Ошибка', 'Произошла ошибка при входе');
-    } finally {
+    } catch (error: any) {
+        if (error.fields) {
+            setErrors({
+            username: error.fields.email,
+            password: error.fields.password,
+            });
+        } else {
+            setErrors({
+            general: error.message,
+            });
+        }
+} finally {
       setLoading(false);
       console.log('🏁 Конец процесса авторизации');
     }
@@ -89,6 +104,7 @@ export default function LoginScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
+        
         <AuthForm
           username={identifier}
           password={password}
@@ -102,8 +118,11 @@ export default function LoginScreen() {
           }}
           onSubmit={handleLogin}
           loading={loading}
+          
         />
-
+        {authError && (
+        <Text style={styles.errorText}>{authError}</Text>
+        )}
         <TouchableOpacity 
           style={styles.registerContainer}
           onPress={() => {
@@ -123,6 +142,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ECE1D1', 
   },
+  errorText: {
+  color: '#C0392B',
+  marginTop: 12,
+  textAlign: 'center',
+},
   greenSection: {
     backgroundColor: '#A4B88C', 
     paddingTop: 60, 

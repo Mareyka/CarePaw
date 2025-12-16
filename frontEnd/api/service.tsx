@@ -60,75 +60,34 @@ class ApiService {
   }
 
   // Авторизация по username ИЛИ email
-  async login(identifier: string, password: string): Promise<UserResponse | null> {
-    try {
-      console.log('🚀 === НАЧАЛО АВТОРИЗАЦИИ ===');
-      console.log('🔑 Идентификатор (username/email):', identifier);
-      console.log('🔒 Пароль:', '***' + password.slice(-3)); // скрываем пароль в логах
-      
-      // Определяем что ввел пользователь
-      const isEmail = identifier.includes('@');
-      console.log('📧 Это email?', isEmail);
-      
-      let requestData;
-      if (isEmail) {
-        // Если ввели email - отправляем как есть
-        requestData = {
-          email: identifier,
-          password: password
-        };
-      } else {
-        // Если ввели username - генерируем email
-        const email = `${identifier}@gmail.com`;
-        requestData = {
-          email: email,
-          password: password
-        };
-        console.log('🔤 Сгенерированный email:', email);
-      }
-      
-      console.log('📤 Отправляемые данные:', { 
-        ...requestData, 
-        password: '***' + password.slice(-3) 
-      });
-      console.log('🌐 URL:', `${API_URL}/login`);
-      
-      const response = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
+async login(identifier: string, password: string): Promise<UserResponse> {
+  try {
+    const response = await fetch(`${API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: identifier, password }),
+    });
 
-      console.log('📥 Статус ответа:', response.status);
-      const text = await response.text();
-      console.log('📥 Тело ответа:', text);
-      
-      let result;
-      try {
-        result = JSON.parse(text);
-        console.log('✅ Ответ (JSON):', result);
-      } catch (e) {
-        result = text;
-        console.log('⚠️ Ответ (текст):', result);
-      }
+    const text = await response.text();
+    const result = text ? JSON.parse(text) : null;
 
-      if (response.ok) {
-        console.log('🎉 Авторизация успешна!');
-        console.log('👤 Данные пользователя:', result);
-        return result;
-      } else {
-        console.log('❌ Ошибка авторизации');
-        Alert.alert('Ошибка авторизации', result || 'Неверный логин или пароль');
-        return null;
-      }
-    } catch (error) {
-      console.error('💥 Login error:', error);
-      Alert.alert('Ошибка', 'Не удалось подключиться к серверу');
-      return null;
-    }
+   if (!response.ok) {
+        if (result?.errors) {
+            const error = new Error('Validation error');
+            (error as any).fields = result.errors;
+            throw error;
+        }
+
+        throw new Error(result || 'Неверный логин или пароль');
+        }
+
+    return result;
+  } catch (error) {
+    console.error('💥 Login error:', error);
+    throw error; // ⬅️ ОБЯЗАТЕЛЬНО
   }
+}
+
 
   // Получение списка пользователей
   async getUsers(): Promise<UserResponse[]> {
