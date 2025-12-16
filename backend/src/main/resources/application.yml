@@ -2,7 +2,7 @@ spring:
   application:
     name: animals
   datasource:
-    url: jdbc:mysql://localhost:3306/animals?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/animals?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
     password: paSSword738
   jpa:
