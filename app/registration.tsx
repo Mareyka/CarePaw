@@ -98,7 +98,7 @@ const handleRegistration = async () => {
 
         <TouchableOpacity 
           style={styles.loginContainer}
-          onPress={() => router.push('/')}
+          onPress={() => router.push('/clinic')}
         >
           <Text style={styles.loginText}>Уже есть аккаунт? Войти</Text>
         </TouchableOpacity>
@@ -107,9 +107,7 @@ const handleRegistration = async () => {
   );
 }
 
-// Стили без изменений
 
-// Стили без изменений
 
 const styles = StyleSheet.create({
   container: {

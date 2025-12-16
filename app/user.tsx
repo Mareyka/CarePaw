@@ -1,7 +1,7 @@
 // app/clinic.tsx
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import React, { useState } from 'react';
 import {
   SafeAreaView,
@@ -22,7 +22,7 @@ interface ClinicProps{
     loading?: boolean;
 }
 
-export default function Clinic({onSubmit,
+export default function UserProfile({onSubmit,
   loading = false}:ClinicProps){
 
     const router = useRouter();
@@ -40,13 +40,21 @@ export default function Clinic({onSubmit,
     const itemSize = Math.floor(screenWidth / 3);
 
     return (
+        <>
+       <Stack.Screen 
+        options={{
+          headerShown: false, // ← Скрываем заголовок
+        }}
+      />
       <SafeAreaView style={styles.safeArea}>
         {/* Верхняя часть с информацией о клинике */}
         <View style={styles.headerContainer}>
           {/* Стрелка назад */}
-          <View style={styles.arrowContainer}>
+          <View style={styles.menuContainer}>
             <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#333" />
+              <Image
+                 source={require('./components/images/menu.svg')}
+                 style={styles.menu} />
             </TouchableOpacity>
           </View>
 
@@ -57,24 +65,11 @@ export default function Clinic({onSubmit,
               {/* Иконка аватара */}
               <View style={styles.iconContainer}>
                 <Image
-                  source={require('./components/images/default_avatar.png')}
-                  style={styles.iconPlaceholder} />
+                 source={require('./components/images/default_avatar.png')}
+                 style={styles.iconPlaceholder} />
+                
               </View>
-              {/* Звезды/рейтинг */}
-              <View style={styles.starsContainer}>
-                {[1, 2, 3, 4, 5].map((num) => (
-                  <Image
-                    key={num}
-                    source={require('./components/images/star.png')}
-                    style={{
-                      width: 15,
-                      height: 15,
-                      marginHorizontal: 1,
-                      tintColor: averageRating >= num ? '#EEB16E' : '#CCCCCC',
-                    }}
-                  />
-                ))}
-              </View>
+              
             </View>
 
             {/* Информация пользователя (правая колонка) */}
@@ -84,10 +79,7 @@ export default function Clinic({onSubmit,
                 <Text style={styles.userName}>_username._</Text>
               </View>
 
-              {/* Роль/специализация */}
-              <View style={styles.roleContainer}>
-                <Text style={styles.role}>Ветклиника</Text>
-              </View>
+            
 
               {/* Публикации и подписчики */}
               <View style={styles.statsContainer}>
@@ -105,38 +97,42 @@ export default function Clinic({onSubmit,
 
           {/* Кнопки и описание */}
           <View style={styles.row3}>
-            {/* Кнопки (левая колонка) */}
-            <View style={styles.buttonsContainer}>
-              
-                <Button
-                  title="Записаться"
-                  onPress={onSubmit}
-                  loading={loading}
-                />
-              
-            </View>
+            
 
             {/* Описание (правая колонка) */}
             <View style={styles.descriptionContainer}>
               <Text style={styles.descriptionText}>
-                Наша клиника с самым лучшим оборудованием и передовыми технологиями.
-                Гордимся нашим персоналом :)
+                Веду фрэндли блог про свою собачку, Димми. 
+                Делюсь его нарядами и результатами наших тренировок
               </Text>
             </View>
           </View>
 
-          {/* Кнопки контактов */}
-          <View style={styles.row4}>
-            <TouchableOpacity style={styles.contactButton}>
-              <Text style={styles.contactButtonText}>Сообщение</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.contactButton}>
-              <Text style={styles.contactButtonText}>Электронн...</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.contactButton}>
-              <Text style={styles.contactButtonText}>Телефон</Text>
-            </TouchableOpacity>
-          </View>
+          
+          
+        </View>
+
+        <View style={styles.storyFeed}>
+          <TouchableOpacity style={styles.story}>
+            <Image 
+            source={require('./components/images/default_avatar.png')}
+            style ={styles.storyImage}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.story}>
+            <Image 
+            source={require('./components/images/default_avatar.png')}
+            style ={styles.storyImage}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.story}>
+            <Image 
+            source={require('./components/images/plus.svg')}
+            style ={styles.storyImage}
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Разделительная линия */}
@@ -145,9 +141,9 @@ export default function Clinic({onSubmit,
           <Image
           source={require('./components/images/posts.svg')}/>
           <Image
-          source={require('./components/images/documents.svg')}/>
+          source={require('./components/images/like.svg')}/>
           <Image
-          source={require('./components/images/comm.svg')}/>
+          source={require('./components/images/Tag.svg')}/>
         </View>
          {/* Разделительная линия */}
         <View style={styles.divider} />
@@ -170,6 +166,7 @@ export default function Clinic({onSubmit,
           style={styles.flatList}
         />
       </SafeAreaView>
+       </>
     );
 }
 
@@ -185,10 +182,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECE1D1',
   },
   
-  arrowContainer: {
+  menuContainer: {
     height: 40,
     justifyContent: 'center',
+    alignItems:"flex-end",
     paddingVertical: 8,
+  },
+  menu:{
+    width:20, 
+    height:20,
   },
 
   row2: {
@@ -212,9 +214,22 @@ const styles = StyleSheet.create({
   iconPlaceholder: {
     width: 90,
     height: 90,
- 
   },
-  
+
+  storyFeed:{
+    flexDirection:"row",
+    marginHorizontal:10,
+  },
+
+  story:{
+  marginHorizontal:5,
+  }, 
+
+  storyImage:{
+    width: 50,
+    height: 50,
+  },
+
   starsContainer: {
     flex: 1,
     width: '100%',

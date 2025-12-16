@@ -1,3 +1,4 @@
+// AuthForm.tsx
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Input from '../ui/Input';
@@ -24,10 +25,12 @@ export default function AuthForm({
   return (
     <View style={styles.container}>
       <Input
-        label="Имя пользователя, эл. адрес"
+        label="Имя пользователя или email"  // Уточнили label
         value={username}
         onChangeText={onUsernameChange}
         placeholder="Введите имя пользователя или email"
+        autoCapitalize="none"
+        
       />
       
       <Input
@@ -41,9 +44,10 @@ export default function AuthForm({
       <OrDivider text="или" />
 
       <Button
-        title="Войти"
+        title={loading ? "Вход..." : "Войти"}
         onPress={onSubmit}
         loading={loading}
+        disabled={loading}
       />
     </View>
   );
