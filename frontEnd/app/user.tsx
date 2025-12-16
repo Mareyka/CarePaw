@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import Button from '../components/Button';
 import PostCard from '../components/ui/PostCard';
+import TabBar from '@/components/TabBar';
 
 interface ClinicProps{
     onSubmit: () => void;
@@ -165,6 +166,7 @@ export default function UserProfile({onSubmit,
           )}
           style={styles.flatList}
         />
+        <TabBar />
       </SafeAreaView>
        </>
     );

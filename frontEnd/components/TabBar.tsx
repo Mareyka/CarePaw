@@ -37,7 +37,7 @@ const TabBar = () => {
     { 
       id: 'profile', 
       icon: <Profile_icon />,
-      route: '/profile' // Профиль в корне
+      route: '/user' // Профиль в корне
     },
   ];
 
@@ -46,7 +46,7 @@ const TabBar = () => {
     if (pathname.includes('/forums')) return 'chat';
     if (pathname.includes('/search')) return 'search';
     if (pathname === '/new-post' || pathname.includes('/new-post')) return 'add';
-    if (pathname === '/profile' || pathname.includes('/profile')) return 'profile';
+    if (pathname === '/user' || pathname.includes('/user')) return 'profile';
     if (pathname.includes('/questionnaire')) return null;
     if (pathname.includes('/questionnaireHistory')) return null;
     if (pathname.includes('/chat/[')) return 'chat';
