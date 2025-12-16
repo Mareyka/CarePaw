@@ -1,14 +1,16 @@
 import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import { Stack } from "expo-router";
 import Svg, { Path, Circle, Rect, G } from "react-native-svg";
+import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
+  const router = useRouter();
   return (
     <View style={styles.wrapper}>
       <Stack.Screen options={{ headerShown: false }} />
       
       <ScrollView contentContainerStyle={styles.container}>
-        <Pressable style={styles.close}>
+        <Pressable style={styles.close} onPress={() => router.back()}>
           <Text style={{ fontSize: 36, color: "#697c44", fontFamily: "inglobal" }}>×</Text>
         </Pressable>
 

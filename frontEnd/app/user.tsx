@@ -52,7 +52,7 @@ export default function UserProfile({onSubmit,
         <View style={styles.headerContainer}>
           {/* Стрелка назад */}
           <View style={styles.menuContainer}>
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity onPress={() => router.push('/settings')}>
               <Image
                  source={require('../assets/images/menu.svg')}
                  style={styles.menu} />
@@ -114,7 +114,8 @@ export default function UserProfile({onSubmit,
         </View>
 
         <View style={styles.storyFeed}>
-          <TouchableOpacity style={styles.story}>
+          <TouchableOpacity style={styles.story}
+          onPress={() => router.push('/pet-passport')}>
             <Image 
             source={require('../assets/images/default_avatar.png')}
             style ={styles.storyImage}
