@@ -1,12 +1,11 @@
 import { View, StyleSheet } from "react-native";
-import { Calendar, CalendarList, Agenda } from "react-native-calendars";
-import { PetCalendarWidgetProps } from "@/types/PetCalendarProps";
+import { Calendar } from "react-native-calendars";
 
-export default function PetCalendarWidget({ markedDates, onDayPress }: PetCalendarWidgetProps) {
+export default function PetCalendarWidget({ markedDates, onDayPress, current }: any) {
   return (
     <View style={styles.calendarBlock}>
       <Calendar
-        current={"2023-08-13"}
+        current={current || new Date().toISOString().split('T')[0]} 
         onDayPress={onDayPress}
         monthFormat={"MMMM yyyy"}
         markedDates={markedDates}

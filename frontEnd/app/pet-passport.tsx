@@ -1,76 +1,144 @@
-import { View, Text, StyleSheet, Image } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { View, Text, StyleSheet, Image, ActivityIndicator, TouchableOpacity } from "react-native";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router"; 
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import PrimaryButton from "@/components/button/PrimaryButton";
+
+const API_URL = 'http://localhost:8080/api'; 
 
 export default function PetPassport() {
   const router = useRouter();
+  
+  // 1. Получаем ID животного
+  const { petId } = useLocalSearchParams();
 
-  // Здесь можно получить данные животного из стора или пропсов, пока мок:
-  const pet = {
-    image: '', 
-    name: '_petname_',
-    type: 'Тип животного',
-    breed: 'Порода',
-    age: 'Возраст',
-    vaccinated: true,
-    neutered: true,
-    dewormed: true,
-    operated: false,
+  // 2. Состояние
+  const [pet, setPet] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  // 3. Загрузка данных
+  useEffect(() => {
+    if (petId) {
+        fetchPetDetails();
+    }
+  }, [petId]);
+
+  const fetchPetDetails = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/pets/${petId}`);
+        console.log("Pet details loaded:", response.data);
+        setPet(response.data);
+    } catch (error) {
+        console.error("Error fetching pet details:", error);
+    } finally {
+        setLoading(false);
+    }
   };
 
-  return (
-    <View style={styles.wrapper}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.close}>
-        <Text style={{fontSize: 28, color: "#697c44"}}>×</Text>
-      </View>
-      <View style={styles.avatarCircle}>
-        {pet.image ? (
-          <Image source={{ uri: pet.image }} style={styles.avatarImage} />
-        ) : (
-          <Text style={{fontSize: 32, color: "#5D684F"}}>👤</Text>
-        )}
-      </View>
-      <Text style={styles.petName}>{pet.name}</Text>
-      <View style={styles.line} />
-      <View style={styles.infoBlock}>
-        <Text style={styles.infoText}>{pet.type}</Text>
-        <Text style={styles.infoText}>{pet.breed}</Text>
-        <Text style={styles.infoText}>{pet.age}</Text>
-      </View>
-      <View style={styles.line} />
-      <View style={styles.infoBlock}>
-        <Text style={styles.infoText}>Прививки</Text>
-        <Text style={styles.infoText}>Кастрировано</Text>
-        <Text style={styles.infoText}>Глистогонные</Text>
-        <Text style={styles.infoText}>Операции</Text>
-      </View>
-      <PrimaryButton
-        title="Календарь"
-        onPress={() => router.push("/pet-calendar")}
-        style={{marginTop: 14}}
-        textStyle={{fontSize: 19}}
-      />
+  // Индикатор загрузки
+  if (loading) {
+    return (
+        <View style={styles.container}>
+             <ActivityIndicator size="large" color="#A4B88C" />
+        </View>
+    );
+  }
 
-      <View style={styles.edit}>
-        <Text style={{ fontSize: 22, color: "#A4B88C", transform: [{ scaleX: -1 }] }}>✎</Text>
+  // Если не нашли
+  if (!pet) {
+      return (
+        <View style={styles.container}>
+            <View style={styles.card}>
+                <Text>Животное не найдено</Text>
+                 <TouchableOpacity onPress={() => router.back()}>
+                    <Text style={{marginTop: 20, color: 'blue'}}>Назад</Text>
+                 </TouchableOpacity>
+            </View>
+        </View>
+      )
+  }
+
+  // Основной интерфейс
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <View style={styles.card}>
+      
+          <TouchableOpacity style={styles.close} onPress={() => router.back()}>
+            <Text style={{fontSize: 28, color: "#697c44"}}>×</Text>
+          </TouchableOpacity>
+
+          <View style={styles.avatarCircle}>
+            {pet.photoUrl ? (
+              <Image source={{ uri: pet.photoUrl }} style={styles.avatarImage} />
+            ) : (
+              <Image source={require('../assets/images/default_avatar.png')} style={styles.avatarImage} />
+            )}
+          </View>
+
+          <Text style={styles.petName}>{pet.name}</Text>
+          
+          <View style={styles.line} />
+          
+          <View style={styles.infoBlock}>
+            <Text style={styles.infoText}>Вид: {pet.species || 'Не указан'}</Text>
+            <Text style={styles.infoText}>Порода: {pet.breed || 'Не указана'}</Text>
+            <Text style={styles.infoText}>Дата рождения: {pet.dateOfBirth || 'Не указана'}</Text>
+          </View>
+
+          <View style={styles.line} />
+          
+          <View style={styles.infoBlock}>
+            <Text style={styles.infoText}>
+                Прививки: {pet.vaccinated ? '✅ Да' : '❌ Нет'}
+            </Text>
+            <Text style={styles.infoText}>
+                Стерилизован: {pet.sterilized ? '✅ Да' : '❌ Нет'}
+            </Text>
+            <Text style={styles.infoText}>
+                Глистогонные: {pet.dewormed ? '✅ Да' : '❌ Нет'}
+            </Text>
+          </View>
+
+          <PrimaryButton
+            title="Календарь"
+            onPress={() => router.push({ pathname: "/pet-calendar", params: { petId: pet.id } })} 
+            style={{marginTop: 14}}
+            textStyle={{fontSize: 19}}
+          />
+
+
+          <View style={styles.edit}>
+            <Text style={{ fontSize: 22, color: "#A4B88C", transform: [{ scaleX: -1 }] }}>✎</Text>
+          </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  card: {
     backgroundColor: "#FFF8E8",
-    margin: 32,
+    width: '90%',        
+    maxWidth: 400,       
     padding: 26,
     borderRadius: 22,
+    
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 7,
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
+    
     position: "relative",
   },
+
   close: {
     position: "absolute",
     right: 18,
@@ -97,8 +165,8 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginVertical: 8,
     color: "#4E5B3F",
+    fontSize: 20,
     fontFamily: "inglobal",
-    fontSize: 18,
   },
   line: {
     borderBottomWidth: 1,
@@ -112,6 +180,7 @@ const styles = StyleSheet.create({
   infoText: {
     color: "#4E5B3F",
     marginVertical: 1,
+    fontSize: 16,
   },
   edit: {
     alignSelf: "flex-end",

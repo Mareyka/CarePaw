@@ -3,7 +3,7 @@ package com.example.animals.controller;
 import com.example.animals.model.Pet;
 import com.example.animals.model.PetEvent;
 import com.example.animals.service.PetEventService;
-import com.example.animals.service.PetService; // Нужен, чтобы найти питомца
+import com.example.animals.service.PetService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/events")
+@CrossOrigin(origins = "http://localhost:8081")
 public class PetEventController {
 
     private final PetEventService eventService;
@@ -36,7 +37,7 @@ public class PetEventController {
         if (pet == null) {
             return ResponseEntity.badRequest().build();
         }
-        event.setPet(pet); // Привязываем событие к питомцу
+        event.setPet(pet);
         return ResponseEntity.ok(eventService.createEvent(event));
     }
 }
