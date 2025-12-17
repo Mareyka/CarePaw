@@ -18,7 +18,7 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    // УДАЛИТЕ РУЧНОЙ КОНСТРУКТОР - он не нужен!
+
 
     // Метод для получения всех пользователей
     public List<User> getAllUsers() {
@@ -26,14 +26,14 @@ public class UserService {
     }
 
     // Метод для регистрации
-    public User registerUser(String name, String email, String password) {
+    public User registerUser(String username, String email, String password) {
         // Проверяем, не занят ли email
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("Email уже используется");
         }
 
         // Создаем и сохраняем пользователя
-        User user = new User(name, email, password);
+        User user = new User(username, email, password);
         return userRepository.save(user);
     }
 

@@ -17,10 +17,20 @@ public class PetController {
         this.petService = petService;
     }
 
-    // 1. Получить список всех питомцев конкретного пользователя
+    // GET http://localhost:8080/api/pets?userId=1
+    @GetMapping
+    public ResponseEntity<List<Pet>> getPetsByQueryParam(@RequestParam(required = false) Long userId) {
+        if (userId != null) {
+            return ResponseEntity.ok(petService.getPetsByUserId(userId));
+        } else {
+            return ResponseEntity.ok(List.of());
+        }
+    }
+
+    // 1. Старый метод: Получить список всех питомцев через путь
     // Пример запроса: GET /api/pets/user/5
     @GetMapping("/user/{userId}")
-    public List<Pet> getPetsByUser(@PathVariable Long userId) {
+    public List<Pet> getPetsByUserPath(@PathVariable Long userId) {
         return petService.getPetsByUserId(userId);
     }
 
@@ -45,7 +55,7 @@ public class PetController {
             Pet newPet = petService.addPet(pet, userId);
             return ResponseEntity.ok(newPet);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build(); // Если юзер не найден
+            return ResponseEntity.badRequest().build();
         }
     }
 }

@@ -14,9 +14,6 @@ import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import "react-native-reanimated";
 
-export const unstable_settings = {
-  anchor: "about",
-};
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -52,6 +49,34 @@ export default function RootLayout() {
           <Stack.Screen name="new-post" options={{ headerShown: false }} />
           {/* Другие экраны в корне */}
           <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="index" 
+            options={{ 
+              headerShown: false,
+              title: 'Авторизация'
+            }} 
+          />
+          <Stack.Screen 
+            name="registration" 
+            options={{ 
+              headerShown: false,
+              title: 'Регистрация'
+            }} 
+          />
+          <Stack.Screen 
+            name="clinic" 
+            options={{ 
+              headerShown: false,
+              title: 'Клиника'
+            }} 
+          />
+          <Stack.Screen 
+            name="user" 
+            options={{ 
+              headerShown: false,
+              title: 'UserProfile'
+            }} 
+          />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

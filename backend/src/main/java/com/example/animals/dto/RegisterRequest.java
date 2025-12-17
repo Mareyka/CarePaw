@@ -1,6 +1,5 @@
 package com.example.animals.dto;
 
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -17,6 +16,9 @@ public class RegisterRequest {
     @Size(min = 3)
     private String password;
 
+    private String description; // необязательное поле
+
+    // Геттеры и сеттеры
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
@@ -25,4 +27,7 @@ public class RegisterRequest {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 }

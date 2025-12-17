@@ -241,8 +241,7 @@ const MapScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ECE1D1',    
-    paddingBottom: 52,
+    backgroundColor: '#ECE1D1',   
   },
   mapContainer: {
     flex: 1,
