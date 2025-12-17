@@ -3,7 +3,6 @@ package com.example.animals.controller;
 import com.example.animals.dto.UserResponse;
 import com.example.animals.model.User;
 import com.example.animals.service.UserService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,7 +14,6 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "${app.cors.allowed-origins}")
 public class RootController {
 
-    // Внедряем UserService
     private final UserService userService;
 
     public RootController(UserService userService) {
@@ -24,25 +22,26 @@ public class RootController {
 
     @GetMapping
     public ResponseEntity<String> root() {
-        return ResponseEntity.ok("API is running. Use /api/register (POST), /api/login (POST), /api/users (GET)");
+        return ResponseEntity.ok("API is running. Use /api/register (POST), /api/login (POST), /api/users (GET), /api/me (GET)");
     }
 
-    // Теперь это будет реальный метод, возвращающий JSON с пользователями
     @GetMapping("/users")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
-        // 1. Получаем всех пользователей из сервиса
         List<User> users = userService.getAllUsers();
 
-        // 2. Преобразуем User в UserResponse (без пароля)
+        // ИСПРАВЛЕНО: используем новый конструктор со всеми полями
         List<UserResponse> userResponses = users.stream()
                 .map(user -> new UserResponse(
                         user.getId(),
                         user.getUsername(),
-                        user.getEmail()
+                        user.getEmail(),
+                        user.getRole(),
+                        user.getDescription(),
+                        user.getPhoto(),
+                        user.getCreatedAt()
                 ))
                 .collect(Collectors.toList());
 
-        // 3. Возвращаем JSON
         return ResponseEntity.ok(userResponses);
     }
 }

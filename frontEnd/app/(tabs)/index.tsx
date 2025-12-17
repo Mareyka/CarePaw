@@ -155,7 +155,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     ...GlobalStyles.bgBase,
-    paddingBottom: 52,
   },
   content: {
     flex: 1,
