@@ -1,6 +1,7 @@
 // app/LoginScreen.tsx или app/index.tsx
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -21,11 +22,14 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
   const [errors, setErrors] = useState<{
   username?: string;
   password?: string;
   general?: string;
 }>({});
+
+
 
  const handleLogin = async () => {
   console.log('=== ВЫЗОВ ФУНКЦИИ LOGIN ===');
@@ -51,34 +55,29 @@ export default function LoginScreen() {
 
   setLoading(true);
   
-  try {
-    console.log('🔄 Начинаем процесс авторизации...');
-    
-    // Используем API для авторизации
-    const userData = await apiService.login(identifier, password);
-    
-    console.log('🎉 Пользователь авторизован:', userData);
-    
-    // Успешная авторизация
-    Alert.alert('Успешно', `Добро пожаловать, ${userData.username}!`);
-    
-    // Переходим на страницу пользователя
-    console.log('➡️ Переход на /user');
-    router.push('/user');
-    
-  } catch (error: any) {
-    console.error('❌ Ошибка авторизации:', error);
-    
-    if (error.message.includes('Invalid credentials')) {
-      setAuthError('Неверный логин или пароль');
-    } else {
-      setAuthError(error.message || 'Ошибка авторизации');
+   try {
+      await login(identifier, password);
+      
+      // Успешная авторизация
+      console.log('✅ Переход на главную страницу');
+      router.replace('/user'); // replace вместо push, чтобы нельзя было вернуться назад
+      
+    } catch (error: any) {
+      console.error('❌ Ошибка авторизации:', error);
+      
+      if (error.message.includes('Invalid credentials')) {
+        setErrors({
+          general: 'Неверный логин или пароль'
+        });
+      } else {
+        setErrors({
+          general: error.message || 'Ошибка авторизации'
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-    console.log('🏁 Конец процесса авторизации');
-  }
-};
+  };
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>

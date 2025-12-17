@@ -83,9 +83,8 @@ export default function RootLayout() {
               presentation: 'transparentModal',
               animation: 'fade', 
               headerShown: false,
-          }} 
-/>
-
+            }} 
+          />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
