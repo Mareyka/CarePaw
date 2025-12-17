@@ -3,6 +3,8 @@ package com.example.animals.model;
 import jakarta.persistence.*;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "posts")
@@ -88,6 +90,23 @@ public class Post {
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostLike> likes = new ArrayList<>();
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostSave> saves = new ArrayList<>();
+
+    // И соответствующие геттеры/сеттеры:
+    public List<PostLike> getLikes() { return likes; }
+    public void setLikes(List<PostLike> likes) { this.likes = likes; }
+
+    public List<PostSave> getSaves() { return saves; }
+    public void setSaves(List<PostSave> saves) { this.saves = saves; }
+
+    // Вспомогательные методы для подсчета
+    public int getLikesCount() { return likes.size(); }
+    public int getSavesCount() { return saves.size(); }
 }
 
 

@@ -2,6 +2,9 @@ package com.example.animals.model;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "users", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
 public class User {
@@ -37,4 +40,17 @@ public class User {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostLike> likedPosts = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostSave> savedPosts = new ArrayList<>();
+
+    // И соответствующие геттеры/сеттеры:
+    public List<PostLike> getLikedPosts() { return likedPosts; }
+    public void setLikedPosts(List<PostLike> likedPosts) { this.likedPosts = likedPosts; }
+
+    public List<PostSave> getSavedPosts() { return savedPosts; }
+    public void setSavedPosts(List<PostSave> savedPosts) { this.savedPosts = savedPosts; }
 }
