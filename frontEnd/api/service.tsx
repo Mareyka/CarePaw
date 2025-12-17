@@ -15,6 +15,12 @@ interface UserResponse {
   email: string;
 }
 
+interface LoginRequest {
+  identifier: string; // Может быть email или username
+  password: string;
+}
+
+
 class ApiService {
   // Регистрация
   async register(data: RegisterData): Promise<UserResponse | null> {
@@ -62,29 +68,32 @@ class ApiService {
   // Авторизация по username ИЛИ email
 async login(identifier: string, password: string): Promise<UserResponse> {
   try {
+    console.log('🔐 Отправка запроса на авторизацию:', { identifier });
+    
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: identifier, password }),
+      body: JSON.stringify({ 
+        identifier, // отправляем как identifier
+        password 
+      }),
     });
 
-    const text = await response.text();
-    const result = text ? JSON.parse(text) : null;
+    console.log('📥 Статус ответа:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Ошибка авторизации:', errorText);
+      throw new Error(errorText || 'Неверный логин или пароль');
+    }
 
-   if (!response.ok) {
-        if (result?.errors) {
-            const error = new Error('Validation error');
-            (error as any).fields = result.errors;
-            throw error;
-        }
-
-        throw new Error(result || 'Неверный логин или пароль');
-        }
-
-    return result;
+    const userData = await response.json();
+    console.log('✅ Пользователь авторизован:', userData);
+    return userData;
+    
   } catch (error) {
     console.error('💥 Login error:', error);
-    throw error; // ⬅️ ОБЯЗАТЕЛЬНО
+    throw error;
   }
 }
 

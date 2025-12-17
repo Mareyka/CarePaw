@@ -27,59 +27,58 @@ export default function LoginScreen() {
   general?: string;
 }>({});
 
-  const handleLogin = async () => {
-    console.log('=== ВЫЗОВ ФУНКЦИИ LOGIN ===');
-    console.log('📝 Введенные данные:', { 
-      identifier, 
-      password: '***' + password.slice(-3) 
-    });
-    
-    // Валидация
-    if (!identifier || !password) {
-      console.log('❌ Валидация: пустые поля');
-      Alert.alert('Ошибка', 'Заполните все поля');
-      return;
-    }
+ const handleLogin = async () => {
+  console.log('=== ВЫЗОВ ФУНКЦИИ LOGIN ===');
+  console.log('📝 Введенные данные:', { 
+    identifier, 
+    password: '***' + password.slice(-3) 
+  });
+  
+  // Сброс ошибок
+  setErrors({});
+  setAuthError(null);
+  
+  // Валидация
+  if (!identifier.trim()) {
+    setErrors({ username: 'Введите email или username' });
+    return;
+  }
+  
+  if (!password) {
+    setErrors({ password: 'Введите пароль' });
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
+  
+  try {
+    console.log('🔄 Начинаем процесс авторизации...');
     
-    try {
-      console.log('🔄 Начинаем процесс авторизации...');
-      
-      // Используем API для авторизации
-      const userData = await apiService.login(identifier, password);
-      
-      console.log('📊 Результат авторизации:', userData ? 'УСПЕХ' : 'НЕУДАЧА');
-      
-      if (userData) {
-        // Успешная авторизация
-        setAuthError(null);
-        console.log('🎉 Пользователь авторизован:', userData);
-        Alert.alert('Успешно', `Добро пожаловать, ${userData.username}!`);
-        
-        // Переходим на страницу пользователя
-        console.log('➡️ Переход на /user');
-        router.push('/user');
-      } else {
-        console.log('❌ Авторизация не удалась');
-        // Ошибка уже обработана в apiService
-      }
-    } catch (error: any) {
-        if (error.fields) {
-            setErrors({
-            username: error.fields.email,
-            password: error.fields.password,
-            });
-        } else {
-            setErrors({
-            general: error.message,
-            });
-        }
-} finally {
-      setLoading(false);
-      console.log('🏁 Конец процесса авторизации');
+    // Используем API для авторизации
+    const userData = await apiService.login(identifier, password);
+    
+    console.log('🎉 Пользователь авторизован:', userData);
+    
+    // Успешная авторизация
+    Alert.alert('Успешно', `Добро пожаловать, ${userData.username}!`);
+    
+    // Переходим на страницу пользователя
+    console.log('➡️ Переход на /user');
+    router.push('/user');
+    
+  } catch (error: any) {
+    console.error('❌ Ошибка авторизации:', error);
+    
+    if (error.message.includes('Invalid credentials')) {
+      setAuthError('Неверный логин или пароль');
+    } else {
+      setAuthError(error.message || 'Ошибка авторизации');
     }
-  };
+  } finally {
+    setLoading(false);
+    console.log('🏁 Конец процесса авторизации');
+  }
+};
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
