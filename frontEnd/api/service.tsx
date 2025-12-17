@@ -1,23 +1,12 @@
 import { Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = 'http://localhost:8080/api';
-const TOKEN_STORAGE_KEY = '@auth_token';
 
 interface RegisterData {
   username: string;
   email: string;
   password: string;
   description?: string;
-}
-
-interface ApiError {
-  message?: string;
-  errors?: {
-    username?: string[];
-    email?: string[];
-    password?: string[];
-  };
 }
 
 export interface UserResponse {
@@ -28,102 +17,25 @@ export interface UserResponse {
   description?: string | null;
   photo?: string | null;
   createdAt?: string;
+  // Убираем token из UserResponse, так как его нет в ответе сервера
 }
-
-interface LoginRequest {
-  identifier: string;
-  password: string;
-}
-
-// Глобальная переменная для хранения токена
-let authToken: string | null = null;
 
 class ApiService {
-  constructor() {
-    this.loadToken();
-  }
-
-  // Загрузка токена из хранилища
-  private async loadToken(): Promise<void> {
-    try {
-      const token = await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
-      if (token) {
-        authToken = token;
-        console.log('🔑 Токен загружен из хранилища');
-      }
-    } catch (error) {
-      console.error('❌ Ошибка загрузки токена:', error);
-    }
-  }
-
-  // Сохранение токена
-  async setToken(token: string | null): Promise<void> {
-    authToken = token;
-    if (token) {
-      try {
-        await AsyncStorage.setItem(TOKEN_STORAGE_KEY, token);
-        console.log('🔑 Токен сохранен');
-      } catch (error) {
-        console.error('❌ Ошибка сохранения токена:', error);
-      }
-    } else {
-      try {
-        await AsyncStorage.removeItem(TOKEN_STORAGE_KEY);
-        console.log('🔑 Токен удален');
-      } catch (error) {
-        console.error('❌ Ошибка удаления токена:', error);
-      }
-    }
-  }
-
-  // Получение текущего токена
-  getToken(): string | null {
-    return authToken;
-  }
-
-  // Универсальный метод для запросов с авторизацией
-  private async fetchWithAuth(
-    url: string, 
-    options: RequestInit = {}
-  ): Promise<Response> {
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
-
-    // Добавляем токен авторизации, если есть
-    if (authToken) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${authToken}`;
-    }
-
-    console.log(`🌐 Запрос: ${options.method || 'GET'} ${url}`);
-    if (authToken) {
-      console.log('🔑 Используется токен авторизации');
-    }
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    // Обработка ошибок авторизации (401)
-    if (response.status === 401) {
-      console.warn('⚠️ Ошибка авторизации (401)');
-      // Можно добавить логику обновления токена или выхода
-      await this.setToken(null);
-    }
-
-    return response;
-  }
+  // Токен хранится только в памяти
+  private authToken: string | null = null;
+  // Данные пользователя в памяти
+  private currentUser: UserResponse | null = null;
 
   // Регистрация
   async register(data: RegisterData): Promise<UserResponse> {
     try {
-      console.log('🚀 === НАЧАЛО РЕГИСТРАЦИИ ===');
-      console.log('📤 Отправляемые данные:', { ...data, password: '***' });
+      console.log('🚀 Регистрация пользователя:', data.username);
       
-      const response = await this.fetchWithAuth(`${API_URL}/register`, {
+      const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(data),
       });
 
@@ -136,16 +48,17 @@ class ApiService {
 
       if (response.ok) {
         try {
-          const userData = JSON.parse(responseText);
-          console.log('🎉 Регистрация успешна!');
+          const userData: UserResponse = JSON.parse(responseText);
+          console.log('🎉 Регистрация успешна! ID:', userData.id);
           
-          // Если сервер возвращает токен при регистрации
-          if (userData.token) {
-            await this.setToken(userData.token);
-          }
+          // Нормализуем и сохраняем данные пользователя
+          const normalizedUser = this.normalizeUserResponse(userData);
+          this.currentUser = normalizedUser;
           
-          return userData;
+          return normalizedUser;
+          
         } catch (e) {
+          console.error('❌ Ошибка парсинга ответа:', e);
           throw new Error('Неверный формат ответа от сервера');
         }
       } else {
@@ -155,7 +68,7 @@ class ApiService {
           const parsed = JSON.parse(responseText);
           errorMessage = parsed.message || parsed;
         } catch (e) {
-          // Оставляем как текст
+          console.log('📝 Ответ в текстовом формате');
         }
 
         // Форматируем сообщения об ошибках
@@ -163,6 +76,9 @@ class ApiService {
           errorMessage = 'Этот email уже используется';
         } else if (errorMessage.includes('Username already used')) {
           errorMessage = 'Этот username уже используется';
+        } else if (typeof errorMessage === 'string' && errorMessage.length === 1) {
+          // Если сервер возвращает одиночный символ (например, "Э")
+          errorMessage = 'Пользователь с такими данными уже существует';
         }
 
         const error = new Error(errorMessage);
@@ -171,51 +87,69 @@ class ApiService {
       }
     } catch (error) {
       console.error('💥 Register error:', error);
-      throw error;
+      
+      // Если это уже наша ошибка - пробрасываем дальше
+      if (error instanceof Error && error.name === 'RegistrationError') {
+        throw error;
+      }
+      
+      // Иначе создаем общую ошибку
+      throw new Error('Не удалось подключиться к серверу');
     }
   }
 
   // Авторизация
   async login(identifier: string, password: string): Promise<UserResponse> {
     try {
-      console.log('🔐 Отправка запроса на авторизацию...');
+      console.log('🔐 Авторизация пользователя:', identifier);
       
-      const response = await this.fetchWithAuth(`${API_URL}/login`, {
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ identifier, password }),
       });
 
       console.log('📥 Статус ответа:', response.status);
+      const responseText = await response.text();
       
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Неверный логин или пароль');
+        let errorMessage = responseText;
+        
+        try {
+          const parsed = JSON.parse(responseText);
+          errorMessage = parsed.message || parsed;
+        } catch (e) {
+          // Оставляем как текст
+        }
+        
+        if (errorMessage.includes('Invalid credentials')) {
+          errorMessage = 'Неверный логин или пароль';
+        }
+        
+        throw new Error(errorMessage || 'Неверный логин или пароль');
       }
 
-      const userData = await response.json();
+      let userData: UserResponse;
+      try {
+        userData = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error('Неверный формат ответа от сервера');
+      }
       
       // Проверяем наличие обязательных полей
       if (!userData.id || !userData.username || !userData.email) {
+        console.error('❌ Неполные данные пользователя:', userData);
         throw new Error('Неверный формат ответа от сервера');
       }
 
-      // Если сервер возвращает токен (JWT)
-      if (userData.token) {
-        await this.setToken(userData.token);
-      }
-
-      // Добавляем дефолтные значения
-      const normalizedUser = {
-        id: userData.id,
-        username: userData.username,
-        email: userData.email,
-        role: userData.role || 'user',
-        description: userData.description || null,
-        photo: userData.photo || null,
-        createdAt: userData.createdAt || new Date().toISOString()
-      };
-
+      // Нормализуем и сохраняем данные пользователя
+      const normalizedUser = this.normalizeUserResponse(userData);
+      this.currentUser = normalizedUser;
+      
       console.log('✅ Авторизация успешна для:', normalizedUser.username);
+      
       return normalizedUser;
       
     } catch (error) {
@@ -224,19 +158,44 @@ class ApiService {
     }
   }
 
-  // Получение списка пользователей (требует авторизации)
+  // Нормализация данных пользователя
+  private normalizeUserResponse(userData: UserResponse): UserResponse {
+    return {
+      id: userData.id,
+      username: userData.username,
+      email: userData.email,
+      role: userData.role || 'user',
+      description: userData.description || null,
+      photo: userData.photo || null,
+      createdAt: userData.createdAt || new Date().toISOString(),
+    };
+  }
+
+  // Получение списка пользователей
   async getUsers(): Promise<UserResponse[]> {
     try {
       console.log('👥 Запрос списка пользователей...');
       
-      const response = await this.fetchWithAuth(`${API_URL}/users`);
-      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Добавляем токен авторизации, если есть
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
+        console.log('🔑 Используется токен авторизации');
+      }
+
+      const response = await fetch(`${API_URL}/users`, {
+        headers,
+      });
+
       console.log('📥 Статус:', response.status);
       
       if (response.ok) {
         const users = await response.json();
         console.log('✅ Получено пользователей:', users.length);
-        return users;
+        return Array.isArray(users) ? users.map(user => this.normalizeUserResponse(user)) : [];
       } else if (response.status === 401) {
         console.log('🔒 Требуется авторизация');
         return [];
@@ -253,6 +212,11 @@ class ApiService {
 
   // Получение текущего пользователя
   async getCurrentUser(email?: string): Promise<UserResponse | null> {
+    // Если пользователь уже загружен, возвращаем его
+    if (this.currentUser) {
+      return this.currentUser;
+    }
+
     try {
       console.log('👤 Запрос данных текущего пользователя...');
       
@@ -261,14 +225,27 @@ class ApiService {
         url += `?email=${encodeURIComponent(email)}`;
       }
       
-      const response = await this.fetchWithAuth(url);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
+      }
+
+      const response = await fetch(url, { headers });
       
       if (response.ok) {
         const userData = await response.json();
+        const normalizedUser = this.normalizeUserResponse(userData);
+        this.currentUser = normalizedUser;
         console.log('✅ Данные пользователя получены');
-        return userData;
+        return normalizedUser;
+      } else if (response.status === 401) {
+        console.log('🔒 Требуется авторизация для получения данных пользователя');
+        return null;
       } else {
-        console.log('❌ Не удалось получить данные пользователя');
+        console.log('❌ Не удалось получить данные пользователя, статус:', response.status);
         return null;
       }
     } catch (error) {
@@ -277,37 +254,58 @@ class ApiService {
     }
   }
 
-  // Обновление данных пользователя
-  async updateUser(userId: number, data: Partial<UserResponse>): Promise<UserResponse | null> {
-    try {
-      console.log('✏️ Обновление данных пользователя:', userId);
-      
-      const response = await this.fetchWithAuth(`${API_URL}/users/${userId}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
-      
-      if (response.ok) {
-        const userData = await response.json();
-        console.log('✅ Данные пользователя обновлены');
-        return userData;
-      } else {
-        const errorText = await response.text();
-        console.log('❌ Ошибка обновления пользователя:', errorText);
-        return null;
-      }
-    } catch (error) {
-      console.error('💥 Update user error:', error);
-      return null;
+  // Установка/получение токена
+  setToken(token: string | null): void {
+    this.authToken = token;
+    if (token) {
+      console.log('🔑 Токен установлен в памяти');
+    } else {
+      console.log('🔑 Токен удален из памяти');
     }
   }
 
-  // Выход (очистка токена)
-  async logout(): Promise<void> {
+  getToken(): string | null {
+    return this.authToken;
+  }
+
+  // Получение текущего пользователя из памяти
+  getCurrentUserFromMemory(): UserResponse | null {
+    return this.currentUser;
+  }
+
+  // Выход (очистка данных)
+  logout(): void {
     console.log('🚪 Выход из системы...');
-    await this.setToken(null);
-    console.log('✅ Токен удален');
+    this.authToken = null;
+    this.currentUser = null;
+    console.log('✅ Данные пользователя очищены из памяти');
+  }
+
+  // Проверка авторизации
+  isAuthenticated(): boolean {
+    return !!this.currentUser;
+  }
+
+  // Проверка соединения с сервером
+  async checkConnection(): Promise<boolean> {
+    try {
+      console.log('🔗 Проверка соединения с сервером...');
+      const response = await fetch(`${API_URL}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const isConnected = response.ok;
+      console.log(isConnected ? '✅ Сервер доступен' : '❌ Сервер недоступен');
+      return isConnected;
+    } catch (error) {
+      console.error('❌ Ошибка проверки соединения:', error);
+      return false;
+    }
   }
 }
 
+// Создаем и экспортируем синглтон экземпляр
 export const apiService = new ApiService();

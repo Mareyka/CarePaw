@@ -256,8 +256,8 @@ const styles = StyleSheet.create({
   }, 
 
   petCircle: {
-    width: 64,          
-    height: 64,
+    width: 50,          
+    height: 50,
     borderRadius: 32,   
     borderWidth: 2,     
     borderColor: '#697c44', 

@@ -1,5 +1,3 @@
-import { Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService, UserResponse } from './service';
 
 export interface User {
@@ -18,120 +16,91 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-const AUTH_STORAGE_KEY = '@auth_data';
-
-// Функция нормализации данных
-const normalizeUser = (userData: UserResponse): User => {
-  return {
-    id: userData.id,
-    username: userData.username,
-    email: userData.email,
-    role: userData.role || 'user',
-    description: userData.description || null,
-    photo: userData.photo || null,
-    createdAt: userData.createdAt || new Date().toISOString()
-  };
-};
-
 class AuthService {
   private user: User | null = null;
   private isAuthenticated = false;
-  private isLoading = true;
-  
+  private isLoading = false;
   private listeners: Array<(state: AuthState) => void> = [];
 
-  constructor() {
-    this.initialize();
-  }
-
-  async initialize(): Promise<void> {
-    await this.loadAuthData();
-    this.isLoading = false;
-    this.notifyListeners();
-  }
-
-async loadAuthData(): Promise<void> {
-  try {
-    console.log('📂 Загрузка данных авторизации...');
-    const authData = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-    
-    if (authData) {
-      const parsedData = JSON.parse(authData);
-      
-      if (parsedData.user) {
-        this.user = parsedData.user;
-        this.isAuthenticated = true;
-        console.log('✅ Авторизация восстановлена для:', this.user?.username || 'unknown');
-      }
-    }
-  } catch (error) {
-    console.error('❌ Ошибка загрузки авторизации:', error);
-    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-  }
-}
-
+  // Авторизация
   async login(identifier: string, password: string): Promise<User> {
+    this.setLoading(true);
+    
     try {
-      console.log('🔐 Авторизация пользователя:', identifier);
-      
-      // Получаем данные от API
       const userResponse = await apiService.login(identifier, password);
+      const user = this.normalizeUser(userResponse);
       
-      // Нормализуем данные
-      const normalizedUser = normalizeUser(userResponse);
-      
-      // Сохраняем
-      this.user = normalizedUser;
+      this.user = user;
       this.isAuthenticated = true;
-      
-      // Сохраняем в AsyncStorage
-      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
-        user: normalizedUser,
-        timestamp: Date.now()
-      }));
-      
-      console.log('✅ Пользователь авторизован:', normalizedUser.username);
       this.notifyListeners();
       
-      return normalizedUser;
+      console.log('✅ Пользователь авторизован:', user.username);
+      return user;
     } catch (error) {
       console.error('❌ Ошибка авторизации:', error);
       throw error;
+    } finally {
+      this.setLoading(false);
     }
   }
 
+  // Регистрация
   async register(data: { username: string; email: string; password: string }): Promise<User> {
+    this.setLoading(true);
+    
     try {
-      console.log('📝 Регистрация пользователя:', data.username);
-      
-      // Регистрируем пользователя
-      const userResponse = await apiService.register({
-        username: data.username,
-        email: data.email,
-        password: data.password
-      });
-      
-      // Автоматически авторизуем
+      const userResponse = await apiService.register(data);
+      // Автоматически авторизуем после регистрации
       return await this.login(data.email, data.password);
-      
     } catch (error) {
       console.error('❌ Ошибка регистрации:', error);
       throw error;
+    } finally {
+      this.setLoading(false);
     }
   }
 
-  async logout(): Promise<void> {
-    console.log('🚪 Выход из системы...');
-    
+  // Выход
+  logout(): void {
+    apiService.logout();
     this.user = null;
     this.isAuthenticated = false;
-    
-    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-    console.log('✅ Данные авторизации удалены');
-    
     this.notifyListeners();
+    console.log('✅ Пользователь вышел из системы');
   }
 
+  // Инициализация (проверка существующей сессии)
+  async initialize(): Promise<void> {
+    this.setLoading(true);
+    
+    try {
+      // Пытаемся получить данные текущего пользователя
+      const userResponse = await apiService.getCurrentUser();
+      if (userResponse) {
+        const user = this.normalizeUser(userResponse);
+        this.user = user;
+        this.isAuthenticated = true;
+        console.log('✅ Сессия восстановлена для:', user.username);
+      } else {
+        console.log('📭 Нет сохраненной сессии');
+      }
+    } catch (error) {
+      console.error('❌ Ошибка инициализации:', error);
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  // Обновление данных пользователя в контексте (не на сервере)
+  updateUserLocal(userData: Partial<User>): void {
+    if (this.user) {
+      this.user = { ...this.user, ...userData };
+      this.notifyListeners();
+      console.log('✅ Данные пользователя обновлены локально');
+    }
+  }
+
+  // Геттеры
   getCurrentUser(): User | null {
     return this.user;
   }
@@ -144,33 +113,20 @@ async loadAuthData(): Promise<void> {
     return this.user?.id || null;
   }
 
-  async updateUser(userData: Partial<User>): Promise<void> {
-    if (!this.user) {
-      throw new Error('Пользователь не авторизован');
-    }
-    
-    // Обновляем данные
-    this.user = { ...this.user, ...userData };
-    
-    // Сохраняем обновленные данные
-    await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
-      user: this.user,
-      timestamp: Date.now()
-    }));
-    
-    console.log('✅ Данные пользователя обновлены');
-    this.notifyListeners();
-  }
-
+  // Подписка на изменения
   subscribe(listener: (state: AuthState) => void): () => void {
     this.listeners.push(listener);
-    
-    // Вызываем сразу текущее состояние
     listener(this.getState());
     
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);
     };
+  }
+
+  // Приватные методы
+  private setLoading(isLoading: boolean): void {
+    this.isLoading = isLoading;
+    this.notifyListeners();
   }
 
   private notifyListeners(): void {
@@ -186,9 +142,16 @@ async loadAuthData(): Promise<void> {
     };
   }
 
-  // Для отладки
-  getStateForDebug(): AuthState {
-    return this.getState();
+  private normalizeUser(userData: UserResponse): User {
+    return {
+      id: userData.id,
+      username: userData.username,
+      email: userData.email,
+      role: userData.role || 'user',
+      description: userData.description || null,
+      photo: userData.photo || null,
+      createdAt: userData.createdAt || new Date().toISOString()
+    };
   }
 }
 

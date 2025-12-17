@@ -7,8 +7,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
   register: (data: { username: string; email: string; password: string }) => Promise<void>;
-  logout: () => Promise<void>;
-  updateUser: (userData: Partial<User>) => Promise<void>;
+  logout: () => void;
+  updateUser: (userData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,63 +26,44 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [state, setState] = useState({
+    user: null as User | null,
+    isAuthenticated: false,
+    isLoading: true
+  });
 
   useEffect(() => {
-    // Загружаем сохраненные данные при монтировании
-    const loadAuthData = async () => {
-      setIsLoading(true);
-      
-      // Подписываемся на изменения
-      const unsubscribe = authService.subscribe((state) => {
-        setUser(state.user);
-        setIsAuthenticated(state.isAuthenticated);
-        setIsLoading(false);
-      });
-      
-      return unsubscribe;
-    };
+    // Подписываемся на изменения состояния
+    const unsubscribe = authService.subscribe((newState) => {
+      setState(newState);
+    });
 
-    loadAuthData();
+    // Инициализируем auth service
+    authService.initialize();
+
+    return unsubscribe;
   }, []);
 
   const login = async (identifier: string, password: string) => {
-    setIsLoading(true);
-    try {
-      await authService.login(identifier, password);
-    } finally {
-      setIsLoading(false);
-    }
+    await authService.login(identifier, password);
   };
 
   const register = async (data: { username: string; email: string; password: string }) => {
-    setIsLoading(true);
-    try {
-      await authService.register(data);
-    } finally {
-      setIsLoading(false);
-    }
+    await authService.register(data);
   };
 
-  const logout = async () => {
-    setIsLoading(true);
-    try {
-      await authService.logout();
-    } finally {
-      setIsLoading(false);
-    }
+  const logout = () => {
+    authService.logout();
   };
 
-  const updateUser = async (userData: Partial<User>) => {
-    await authService.updateUser(userData);
+  const updateUser = (userData: Partial<User>) => {
+    authService.updateUserLocal(userData);
   };
 
   const value = {
-    user,
-    isAuthenticated,
-    isLoading,
+    user: state.user,
+    isAuthenticated: state.isAuthenticated,
+    isLoading: state.isLoading,
     login,
     register,
     logout,
