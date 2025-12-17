@@ -7,6 +7,16 @@ interface RegisterData {
   username: string;
   email: string;
   password: string;
+  description?: string;
+}
+
+interface ApiError {
+  message?: string;
+  errors?: {
+    username?: string[];
+    email?: string[];
+    password?: string[];
+  };
 }
 
 interface UserResponse {
@@ -23,47 +33,93 @@ interface LoginRequest {
 
 class ApiService {
   // Регистрация
-  async register(data: RegisterData): Promise<UserResponse | null> {
-    try {
-      console.log('🚀 === НАЧАЛО РЕГИСТРАЦИИ ===');
-      console.log('📤 Отправляемые данные:', data);
-      console.log('🌐 URL:', `${API_URL}/register`);
-      
-      const response = await fetch(`${API_URL}/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+ async register(data: RegisterData): Promise<UserResponse | null> {
+  try {
+    console.log('🚀 === НАЧАЛО РЕГИСТРАЦИИ ===');
+    console.log('📤 Отправляемые данные:', data);
+    console.log('🌐 URL:', `${API_URL}/register`);
+    
+    const response = await fetch(`${API_URL}/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
 
-      console.log('📥 Статус ответа:', response.status);
-      const text = await response.text();
-      console.log('📥 Тело ответа:', text);
-      
-      let result;
-      try {
-        result = JSON.parse(text);
-        console.log('✅ Ответ (JSON):', result);
-      } catch (e) {
-        result = text;
-        console.log('⚠️ Ответ (текст):', result);
-      }
-
-      if (response.ok) {
-        console.log('🎉 Регистрация успешна!');
-        return result;
-      } else {
-        console.log('❌ Ошибка регистрации');
-        Alert.alert('Ошибка регистрации', result || 'Неизвестная ошибка');
-        return null;
-      }
-    } catch (error) {
-      console.error('💥 Register error:', error);
-      Alert.alert('Ошибка', 'Не удалось подключиться к серверу');
-      return null;
+    console.log('📥 Статус ответа:', response.status);
+    const responseText = await response.text(); // Получаем текст
+    console.log('📥 Тело ответа (сырое):', responseText);
+    
+    // Проверяем, пустой ли ответ
+    if (!responseText.trim()) {
+      console.log('⚠️ Пустой ответ от сервера');
+      throw new Error('Пустой ответ от сервера');
     }
+
+    let errorMessage = responseText;
+    
+    // Пробуем распарсить как JSON (на случай если сервер вернет JSON)
+    try {
+      const parsed = JSON.parse(responseText);
+      if (parsed.message || typeof parsed === 'string') {
+        errorMessage = parsed.message || parsed;
+      }
+    } catch (e) {
+      // Не JSON, оставляем как текст
+      console.log('📝 Ответ в текстовом формате');
+    }
+
+    if (response.ok) {
+      // Успешный ответ должен быть JSON
+      try {
+        const userData = JSON.parse(responseText);
+        console.log('🎉 Регистрация успешна!', userData);
+        return userData;
+      } catch (e) {
+        console.error('❌ Не удалось распарсить успешный ответ:', e);
+        throw new Error('Неверный формат ответа от сервера');
+      }
+    } else {
+      console.log('❌ Ошибка регистрации:', errorMessage);
+      
+      // Форматируем сообщение об ошибке
+      let formattedError = errorMessage;
+      
+      if (errorMessage.includes('Email already used')) {
+        formattedError = 'Этот email уже используется';
+      } else if (errorMessage.includes('Username already used')) {
+        formattedError = 'Этот username уже используется';
+      } else if (errorMessage === 'Э') {
+        // Если сервер почему-то возвращает "Э"
+        formattedError = 'Пользователь с такими данными уже существует';
+      }
+      
+      // Создаем структурированную ошибку
+      const error = new Error(formattedError);
+      error.name = 'RegistrationError';
+      
+      // Добавляем дополнительные поля для определения типа ошибки
+      if (errorMessage.includes('Email already used')) {
+        (error as any).field = 'email';
+      } else if (errorMessage.includes('Username already used')) {
+        (error as any).field = 'username';
+      }
+      
+      throw error;
+    }
+  } catch (error) {
+    console.error('💥 Register error:', error);
+    
+    // Если это уже наша ошибка - пробрасываем дальше
+    if (error instanceof Error && error.name === 'RegistrationError') {
+      throw error;
+    }
+    
+    // Иначе создаем общую ошибку
+    throw new Error('Не удалось подключиться к серверу');
   }
+}
 
   // Авторизация по username ИЛИ email
 async login(identifier: string, password: string): Promise<UserResponse> {
