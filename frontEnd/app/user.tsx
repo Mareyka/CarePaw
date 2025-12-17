@@ -1,8 +1,6 @@
-// app/clinic.tsx
-
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -14,20 +12,42 @@ import {
   Dimensions,
   ScrollView,
 } from 'react-native';
+import axios from 'axios'; 
 import Button from '../components/Button';
 import PostCard from '../components/ui/PostCard';
 import TabBar from '@/components/TabBar';
+
+// Настройка API
+const API_URL = 'http://localhost:8080/api'; 
+const USER_ID = 1;
 
 interface ClinicProps{
     onSubmit: () => void;
     loading?: boolean;
 }
 
-export default function UserProfile({onSubmit,
-  loading = false}:ClinicProps){
+export default function UserProfile({onSubmit, loading = false}:ClinicProps){
 
     const router = useRouter();
     const [averageRating, setAverageRating] = useState(4.3);
+    
+    // 1. Добавили состояние для списка животных
+    const [pets, setPets] = useState<any[]>([]);
+
+    // 2. Загружаем животных при открытии страницы
+    useEffect(() => {
+        fetchPets();
+    }, []);
+
+    const fetchPets = async () => {
+        try {
+            const response = await axios.get(`${API_URL}/pets?userId=${USER_ID}`);
+            console.log("Pets loaded:", response.data);
+            setPets(response.data);
+        } catch (error) {
+            console.error("Error fetching pets:", error);
+        }
+    };
 
     // sample posts — в реальном приложении получите с сервера
     const posts = Array.from({ length: 12 }).map((_, i) => ({
@@ -68,9 +88,7 @@ export default function UserProfile({onSubmit,
                 <Image
                  source={require('../assets/images/default_avatar.png')}
                  style={styles.iconPlaceholder} />
-                
               </View>
-              
             </View>
 
             {/* Информация пользователя (правая колонка) */}
@@ -79,8 +97,6 @@ export default function UserProfile({onSubmit,
               <View style={styles.userNameContainer}>
                 <Text style={styles.userName}>_username._</Text>
               </View>
-
-            
 
               {/* Публикации и подписчики */}
               <View style={styles.statsContainer}>
@@ -98,8 +114,6 @@ export default function UserProfile({onSubmit,
 
           {/* Кнопки и описание */}
           <View style={styles.row3}>
-            
-
             {/* Описание (правая колонка) */}
             <View style={styles.descriptionContainer}>
               <Text style={styles.descriptionText}>
@@ -108,34 +122,44 @@ export default function UserProfile({onSubmit,
               </Text>
             </View>
           </View>
-
-          
-          
         </View>
 
-        <View style={styles.storyFeed}>
-          <TouchableOpacity style={styles.story}
-          onPress={() => router.push('/pet-passport')}>
-            <Image 
-            source={require('../assets/images/default_avatar.png')}
-            style ={styles.storyImage}
-            />
-          </TouchableOpacity>
+          {/* --- СЕКЦИЯ ДОМАШНИХ ЖИВОТНЫХ --- */}
+          <View style={styles.storyFeed}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            
+            {/* Динамический список питомцев */}
+            {pets.map((pet) => (
+               <TouchableOpacity 
+                  key={pet.id} 
+                  style={styles.story}
+                  onPress={() => router.push({ pathname: '/pet-passport', params: { petId: pet.id } })}
+               >
+                  <View style={styles.petCircle}>
+                      <Image 
+                          source={pet.photoUrl ? { uri: pet.photoUrl } : require('../assets/images/default_avatar.png')}
+                          style={styles.storyImage}
+                      />
+                  </View>
+               </TouchableOpacity>
+            ))}
 
-          <TouchableOpacity style={styles.story}>
-            <Image 
-            source={require('../assets/images/default_avatar.png')}
-            style ={styles.storyImage}
-            />
-          </TouchableOpacity>
+            {/* Кнопка добавления (+) */}
+            <TouchableOpacity style={styles.story}>
+              <View style={[styles.petCircle, styles.addBtnCircle]}>
+                <Text style={{
+                    fontSize: 34, 
+                    color: '#697c44', 
+                    lineHeight: 34,
+                    marginTop: -4,  
+                    textAlign: 'center' 
+                }}>+</Text>
+              </View>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.story}>
-            <Image 
-            source={require('../assets/images/plus.svg')}
-            style ={styles.storyImage}
-            />
-          </TouchableOpacity>
+          </ScrollView>
         </View>
+
 
         {/* Разделительная линия */}
         <View style={styles.divider} />
@@ -172,7 +196,6 @@ export default function UserProfile({onSubmit,
        </>
     );
 }
-
 const styles = StyleSheet.create({
 
   safeArea: {
@@ -219,19 +242,44 @@ const styles = StyleSheet.create({
     height: 90,
   },
 
+  // --- СТИЛИ ДЛЯ ДОМ ЖИВ ---
   storyFeed:{
-    flexDirection:"row",
-    marginHorizontal:10,
+    flexDirection: "row",
+    paddingHorizontal: 16, 
+    marginBottom: 10,
+    marginTop: 10,
   },
 
   story:{
-  marginHorizontal:5,
+    marginRight: 12,
+    alignItems: 'center',
   }, 
 
-  storyImage:{
-    width: 50,
-    height: 50,
+  petCircle: {
+    width: 64,          
+    height: 64,
+    borderRadius: 32,   
+    borderWidth: 2,     
+    borderColor: '#697c44', 
+    padding: 2,         
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff', 
   },
+
+  storyImage:{
+    width: '100%',     
+    height: '100%',
+    borderRadius: 30,   
+    resizeMode: 'cover', 
+  },
+
+  addBtnCircle: {
+    borderColor: '#697c44',
+    borderStyle: 'solid', 
+    backgroundColor: 'transparent',
+  },
+  // -------------------------------------
 
   starsContainer: {
     flex: 1,
@@ -310,8 +358,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   
-
-
   actionButton: {
     backgroundColor: '#A4B88C',
     paddingVertical: 10,
@@ -398,3 +444,4 @@ const styles = StyleSheet.create({
   },
   
 });
+

@@ -77,6 +77,15 @@ export default function RootLayout() {
               title: 'UserProfile'
             }} 
           />
+          <Stack.Screen 
+            name="pet-passport" 
+            options={{
+              presentation: 'transparentModal',
+              animation: 'fade', 
+              headerShown: false,
+          }} 
+/>
+
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
