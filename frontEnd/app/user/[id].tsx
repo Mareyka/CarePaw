@@ -24,6 +24,7 @@ import { getPetsByUserId, resolvePetPhotoUrl } from '@/api/pets';
 import { getAllShelterAnimals, resolveShelterAnimalPhotoUrl, ShelterAnimal } from '@/api/shelter-animals';
 import PostThumbnail from '@/components/PostThumbnail';
 
+const API_URL = 'http://localhost:8080/api';
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3; // Вынесли константу, чтобы была доступна везде
 
