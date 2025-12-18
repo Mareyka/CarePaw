@@ -215,22 +215,12 @@ const MapScreen = () => {
     );
   };
 
-  const handleMapButtonPress = () => {
-    console.log('Кнопка на карте нажата!');
-    // Здесь можно добавить функционал
-  };
-
   return (
     <View style={styles.safeArea}>
       <Header />
       <View style={styles.mapContainer}>
         {renderMap()}
         
-        <Button 
-          title="Узнать рекомендации недели"
-          onPress={handleMapButtonPress}
-          style={styles.mapButton}
-        />
       </View>
       
       <TabBar />

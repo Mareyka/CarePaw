@@ -34,6 +34,7 @@ public class UserResponse {
         this.createdAt = LocalDateTime.now();
     }
 
+
     // Геттеры
     public Long getId() { return id; }
     public String getUsername() { return username; }

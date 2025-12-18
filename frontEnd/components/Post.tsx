@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Image, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -43,9 +44,11 @@ interface PostProps {
   postData?: {
     id: number;
     title?: string;
-    photoUrl?: string;           // Имя файла или полный URL
-    fullPhotoUrl?: string;       // Полный URL (если есть)
+    photoUrl?: string;
+    fullPhotoUrl?: string;
+    userId: number;
     username?: string;
+    userPhoto?: string;
     placeName?: string;
     urgently?: boolean;
     likesCount?: number;
@@ -63,48 +66,92 @@ const Post = ({
   onSaveChanged
 }: PostProps) => {
   const { user } = useAuth();
+  const router = useRouter();
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [saved, setSaved] = useState(false);
   const [loadingLike, setLoadingLike] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string>('');
 
-  // Функция для получения правильного URL изображения
+  // Функция для получения правильного URL изображения поста
   const getImageUrl = () => {
     if (!postData?.photoUrl) {
       return 'https://via.placeholder.com/400x200?text=No+Image';
     }
     
-    // 1. Сначала проверяем fullPhotoUrl (если он есть в данных)
     if (postData.fullPhotoUrl) {
       return postData.fullPhotoUrl;
     }
     
-    // 2. Проверяем, является ли photoUrl уже полным URL
     if (postData.photoUrl.startsWith('http://') || postData.photoUrl.startsWith('https://')) {
       return postData.photoUrl;
     }
     
-    // 3. Если это только имя файла, формируем полный URL
     return `http://localhost:8080/api/images/posts/${postData.photoUrl}`;
+  };
+
+  // Функция для получения URL аватара пользователя
+  const fetchUserAvatar = async () => {
+    if (!postData?.userId) return;
+    
+    try {
+      // Если в postData уже есть userPhoto, используем его
+      if (postData.userPhoto) {
+        const url = postData.userPhoto.startsWith('http://') || postData.userPhoto.startsWith('https://')
+          ? postData.userPhoto
+          : `http://localhost:8080/uploads/${postData.userPhoto}`;
+        setUserAvatarUrl(url);
+        return;
+      }
+      
+      // Если нет userPhoto, пробуем получить пользователя по ID
+      const response = await fetch(`${API_BASE_URL}/me?email=`, {
+        headers: {
+          'X-User-Id': postData.userId.toString()
+        }
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        if (userData.photo) {
+          const url = userData.photo.startsWith('http://') || userData.photo.startsWith('https://')
+            ? userData.photo
+            : `http://localhost:8080/uploads/${userData.photo}`;
+          setUserAvatarUrl(url);
+        }
+      }
+    } catch (error) {
+      console.log('Could not fetch user avatar:', error);
+      // Используем заглушку
+      setUserAvatarUrl('https://via.placeholder.com/24');
+    }
+  };
+
+  // Функция перехода на профиль пользователя
+  const navigateToUserProfile = () => {
+    if (postData?.userId) {
+      console.log('Navigating to user profile:', postData.userId);
+      router.push({
+        pathname: '/user/[id]',
+        params: { id: postData.userId.toString() }
+      });
+    } else {
+      console.warn('User ID is missing in post data');
+    }
   };
 
   // Инициализируем состояния из postData
   useEffect(() => {
     if (postData) {
-      console.log('Post data received:', {
-        id: postData.id,
-        title: postData.title,
-        photoUrl: postData.photoUrl,
-        fullPhotoUrl: postData.fullPhotoUrl,
-        computedUrl: getImageUrl()
-      });
-      
       setLiked(postData.likedByCurrentUser || false);
       setLikesCount(postData.likesCount || 0);
       setSaved(postData.savedByCurrentUser || false);
-      setImageError(false); // Сбрасываем ошибку при новом посте
+      setImageError(false);
+      
+      // Пробуем получить аватар пользователя
+      fetchUserAvatar();
     }
   }, [postData]);
 
@@ -218,12 +265,28 @@ const Post = ({
       {/* Шапка поста с пользователем */}
       <View style={styles.actionsContainer}>
         <View style={styles.leftActions}>
-          <Image 
-            source={{ uri: 'https://via.placeholder.com/24' }} 
-            style={styles.userimg}
-            resizeMode="cover"
-          />
-          <Text style={styles.usernameText}>{username}</Text>
+          {/* Аватар пользователя */}
+          <TouchableOpacity onPress={navigateToUserProfile}>
+            <Image 
+              source={{ 
+                uri: userAvatarUrl || 'https://via.placeholder.com/24',
+                cache: 'force-cache'
+              }} 
+              style={styles.userimg}
+              resizeMode="cover"
+              defaultSource={require('@/assets/images/default_avatar.png')}
+              onError={() => {
+                // Если не удалось загрузить аватар, используем заглушку
+                setUserAvatarUrl('https://via.placeholder.com/24');
+              }}
+            />
+          </TouchableOpacity>
+          
+          {/* Имя пользователя - теперь кликабельное */}
+          <TouchableOpacity onPress={navigateToUserProfile}>
+            <Text style={styles.usernameText}>{username}</Text>
+          </TouchableOpacity>
+          
           {postData.urgently && (
             <View style={styles.urgentBadge}>
               <Text style={styles.urgentText}>Срочно</Text>
@@ -236,7 +299,7 @@ const Post = ({
       <Image 
         source={{ 
           uri: imageUrl,
-          cache: 'force-cache' // Кэшируем изображения
+          cache: 'force-cache'
         }} 
         style={styles.image}
         resizeMode="cover"
