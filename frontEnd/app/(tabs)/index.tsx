@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Text, ActivityIndicator, RefreshControl } from 'react-native';
+import { 
+  View, 
+  StyleSheet, 
+  ScrollView, 
+  Text, 
+  ActivityIndicator, 
+  RefreshControl,
+  Alert 
+} from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext'; // Импортируем useAuth
 import Header from '../../components/Header';
 import Post from '../../components/Post';
 import TabBar from '../../components/TabBar';
@@ -19,7 +28,7 @@ type PostType = {
   userId: number;
   username: string;
   placeName: string;
-  urgently: boolean; // API возвращает urgently
+  urgently: boolean;
   createdAt: string;
   likesCount: number;
   savesCount: number;
@@ -29,11 +38,10 @@ type PostType = {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user } = useAuth(); // Используем user из контекста
   const [posts, setPosts] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
-  const currentUserId = 1;
 
   const handleQuestionnairePress = () => {
     router.push('/(tabs)/questionnaire');
@@ -42,65 +50,53 @@ export default function HomeScreen() {
   const fetchPosts = async () => {
     try {
       console.log('Fetching posts from API...');
-      const response = await fetch(`${API_BASE_URL}/posts/all-detailed`);
+      
+      // Подготавливаем заголовки
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Если пользователь авторизован, добавляем его ID в заголовок
+      if (user?.id) {
+        headers['X-User-Id'] = user.id.toString();
+        console.log('Adding X-User-Id header:', user.id);
+      } else {
+        console.log('User not authenticated, fetching posts without user context');
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/posts/all-detailed`, {
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
-      console.log('API Response:', data);
+      console.log('API Response:', data.length, 'posts');
       
       // Преобразуем данные API в нужный формат
       const formattedPosts: PostType[] = data.map((post: any) => ({
         id: post.id,
-        title: post.title,
-        photoUrl: post.photoUrl,
-        fullPhotoUrl: post.fullPhotoUrl,
-        userId: post.userId,
-        username: post.username,
-        placeName: post.placeName,
-        urgently: post.urgently, // Обратите внимание: urgently, а не isUrgently
-        createdAt: post.createdAt,
-        likesCount: post.likesCount,
-        savesCount: post.savesCount,
-        likedByCurrentUser: post.likedByCurrentUser,
-        savedByCurrentUser: post.savedByCurrentUser
+        title: post.title || 'Без названия',
+        photoUrl: post.photoUrl || '',
+        fullPhotoUrl: post.fullPhotoUrl || post.photoUrl,
+        userId: post.userId || 0,
+        username: post.username || 'Неизвестный',
+        placeName: post.placeName || 'Местоположение не указано',
+        urgently: post.urgently || false,
+        createdAt: post.createdAt || new Date().toISOString(),
+        likesCount: post.likesCount || 0,
+        savesCount: post.savesCount || 0,
+        likedByCurrentUser: post.likedByCurrentUser || false,
+        savedByCurrentUser: post.savedByCurrentUser || false
       }));
       
-      console.log('Formatted posts:', formattedPosts);
+      console.log('Formatted posts:', formattedPosts.length, 'posts');
       setPosts(formattedPosts);
     } catch (error) {
       console.error('Error fetching posts:', error);
-      console.log('Using fallback data');
-      
-      // Простые fallback данные
-      const fallbackPosts: PostType[] = [
-        {
-          id: 1,
-          title: "Найдена собака в парке",
-          photoUrl: "http://localhost:8080/assets/images/posts/post1.jpg",
-          userId: 1,
-          username: "Mary",
-          placeName: "Парк Горького",
-          urgently: false,
-          createdAt: "2025-12-17T14:51:40Z",
-          likesCount: 1,
-          savesCount: 1,
-          likedByCurrentUser: false,
-          savedByCurrentUser: false
-        },
-        {
-          id: 2,
-          title: "Нашел щенка возле метро",
-          photoUrl: "http://localhost:8080/assets/images/posts/post2.jpg",
-          userId: 1,
-          username: "Mary",
-          placeName: "Лосиный остров",
-          urgently: false,
-          createdAt: "2025-12-17T14:51:40Z",
-          likesCount: 1,
-          savesCount: 1,
-          likedByCurrentUser: false,
-          savedByCurrentUser: false
-        }
-      ];
-      setPosts(fallbackPosts);
+      Alert.alert('Ошибка', 'Не удалось загрузить посты');
     }
   };
 
@@ -117,32 +113,38 @@ export default function HomeScreen() {
   };
 
   const handleLikeChanged = (postId: number, isLiked: boolean) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { 
-            ...post, 
-            likedByCurrentUser: isLiked,
-            likesCount: isLiked ? post.likesCount + 1 : post.likesCount - 1
-          }
-        : post
-    ));
+    setPosts(prevPosts => 
+      prevPosts.map(post => 
+        post.id === postId 
+          ? { 
+              ...post, 
+              likedByCurrentUser: isLiked,
+              likesCount: isLiked ? (post.likesCount || 0) + 1 : Math.max(0, (post.likesCount || 0) - 1)
+            }
+          : post
+      )
+    );
   };
 
   const handleSaveChanged = (postId: number, isSaved: boolean) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { 
-            ...post, 
-            savedByCurrentUser: isSaved,
-            savesCount: isSaved ? post.savesCount + 1 : post.savesCount - 1
-          }
-        : post
-    ));
+    setPosts(prevPosts => 
+      prevPosts.map(post => 
+        post.id === postId 
+          ? { 
+              ...post, 
+              savedByCurrentUser: isSaved,
+              savesCount: isSaved ? (post.savesCount || 0) + 1 : Math.max(0, (post.savesCount || 0) - 1)
+            }
+          : post
+      )
+    );
   };
 
+  // Загружаем посты при изменении user
   useEffect(() => {
+    // Не ждем загрузки - можно сразу загружать посты
     loadPosts();
-  }, []);
+  }, [user?.id]); // Перезагружаем посты при изменении ID пользователя
 
   if (loading && posts.length === 0) {
     return (
@@ -179,36 +181,8 @@ export default function HomeScreen() {
             <Post 
               key={post.id}
               postData={post}
-              onLikePress={(postId, liked) => {
-                // Обновляем состояние
-                setPosts(posts.map(p => 
-                  p.id === postId 
-                    ? { 
-                        ...p, 
-                        likedByCurrentUser: liked,
-                        likesCount: liked ? p.likesCount + 1 : p.likesCount - 1
-                      }
-                    : p
-                ));
-                
-                // Здесь можно добавить API запрос
-                console.log(`Post ${postId} ${liked ? 'liked' : 'unliked'}`);
-              }}
-              onBookmarkPress={(postId, saved) => {
-                // Обновляем состояние
-                setPosts(posts.map(p => 
-                  p.id === postId 
-                    ? { 
-                        ...p, 
-                        savedByCurrentUser: saved,
-                        savesCount: saved ? p.savesCount + 1 : p.savesCount - 1
-                      }
-                    : p
-                ));
-                
-                // Здесь можно добавить API запрос
-                console.log(`Post ${postId} ${saved ? 'saved' : 'unsaved'}`);
-              }}
+              onLikeChanged={handleLikeChanged}
+              onSaveChanged={handleSaveChanged}
             />
           ))
         )}
