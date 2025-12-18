@@ -25,15 +25,11 @@ class AuthService {
   // Авторизация
   async login(identifier: string, password: string): Promise<User> {
     this.setLoading(true);
-    
     try {
       const userResponse = await apiService.login(identifier, password);
       const user = this.normalizeUser(userResponse);
       
-      this.user = user;
-      this.isAuthenticated = true;
-      this.notifyListeners();
-      
+      this.updateInternalState(user);
       console.log('✅ Пользователь авторизован:', user.username);
       return user;
     } catch (error) {
@@ -45,13 +41,18 @@ class AuthService {
   }
 
   // Регистрация
-  async register(data: { username: string; email: string; password: string }): Promise<User> {
+  async register(data: { username: string; email: string; password: string; description?: string }): Promise<User> {
     this.setLoading(true);
-    
     try {
+      // 1. Делаем запрос регистрации
       const userResponse = await apiService.register(data);
-      // Автоматически авторизуем после регистрации
-      return await this.login(data.email, data.password);
+      const user = this.normalizeUser(userResponse);
+      
+      // 2. Сразу сохраняем пользователя в стейт (не вызывая login повторно)
+      this.updateInternalState(user);
+      
+      console.log('✅ Регистрация и вход успешны:', user.username);
+      return user;
     } catch (error) {
       console.error('❌ Ошибка регистрации:', error);
       throw error;
@@ -69,61 +70,38 @@ class AuthService {
     console.log('✅ Пользователь вышел из системы');
   }
 
-  // Инициализация (проверка существующей сессии)
+  // Упрощенная инициализация (пока просто выключает загрузку)
   async initialize(): Promise<void> {
-    this.setLoading(true);
-    
-    try {
-      // Пытаемся получить данные текущего пользователя
-      const userResponse = await apiService.getCurrentUser();
-      if (userResponse) {
-        const user = this.normalizeUser(userResponse);
-        this.user = user;
-        this.isAuthenticated = true;
-        console.log('✅ Сессия восстановлена для:', user.username);
-      } else {
-        console.log('📭 Нет сохраненной сессии');
-      }
-    } catch (error) {
-      console.error('❌ Ошибка инициализации:', error);
-    } finally {
-      this.setLoading(false);
-    }
+    this.setLoading(false);
+    console.log('🚀 Система авторизации инициализирована (In-Memory mode)');
   }
 
-  // Обновление данных пользователя в контексте (не на сервере)
+  // Внутренний метод для обновления стейта
+  private updateInternalState(user: User): void {
+    this.user = user;
+    this.isAuthenticated = true;
+    this.notifyListeners();
+  }
+
   updateUserLocal(userData: Partial<User>): void {
     if (this.user) {
       this.user = { ...this.user, ...userData };
       this.notifyListeners();
-      console.log('✅ Данные пользователя обновлены локально');
     }
   }
 
   // Геттеры
-  getCurrentUser(): User | null {
-    return this.user;
-  }
+  getCurrentUser(): User | null { return this.user; }
+  isLoggedIn(): boolean { return this.isAuthenticated; }
 
-  isLoggedIn(): boolean {
-    return this.isAuthenticated;
-  }
-
-  getUserId(): number | null {
-    return this.user?.id || null;
-  }
-
-  // Подписка на изменения
   subscribe(listener: (state: AuthState) => void): () => void {
     this.listeners.push(listener);
     listener(this.getState());
-    
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);
     };
   }
 
-  // Приватные методы
   private setLoading(isLoading: boolean): void {
     this.isLoading = isLoading;
     this.notifyListeners();
@@ -135,11 +113,7 @@ class AuthService {
   }
 
   private getState(): AuthState {
-    return {
-      user: this.user,
-      isAuthenticated: this.isAuthenticated,
-      isLoading: this.isLoading
-    };
+    return { user: this.user, isAuthenticated: this.isAuthenticated, isLoading: this.isLoading };
   }
 
   private normalizeUser(userData: UserResponse): User {

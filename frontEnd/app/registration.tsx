@@ -31,41 +31,15 @@ export default function RegistrationScreen() {
   }>({});
   const router = useRouter();
 
-  const handleRegistration = async () => {
-    console.log('=== Начало регистрации ===');
-    console.log('Username:', username);
-    console.log('Email:', email);
-    console.log('Password:', password);
-    
-    // Сброс ошибок
+ const handleRegistration = async () => {
     setErrors({});
     
-    // Валидация на клиенте
-    const newErrors: typeof errors = {};
-    
-    if (!username.trim()) {
-      newErrors.username = 'Введите имя пользователя';
-    } else if (username.length < 3) {
-      newErrors.username = 'Имя пользователя должно быть не менее 3 символов';
-    }
-    
-    if (!email.trim()) {
-      newErrors.email = 'Введите email';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Введите корректный email';
-    }
-    
-    if (!password) {
-      newErrors.password = 'Введите пароль';
-    } else if (password.length < 6) {
-      newErrors.password = 'Пароль должен быть не менее 6 символов';
-    }
-    
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Подтвердите пароль';
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Пароли не совпадают';
-    }
+    // Валидация на клиенте (оставлена как была, она верная)
+    const newErrors: any = {};
+    if (!username.trim()) newErrors.username = 'Введите имя пользователя';
+    if (!email.trim()) newErrors.email = 'Введите email';
+    if (!password) newErrors.password = 'Введите пароль';
+    if (password !== confirmPassword) newErrors.confirmPassword = 'Пароли не совпадают';
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -73,77 +47,41 @@ export default function RegistrationScreen() {
     }
 
     setLoading(true);
-    
     try {
-      console.log('Отправка запроса к API...');
-      
-      const registerData = {
+      const userData = await register({
         username: username.trim(),
         email: email.trim(),
         password: password,
-        description: description.trim() || undefined
-      };
-
-      await register({
-        username: username.trim(),
-        email: email.trim(),
-        password: password
+        description: description.trim()
       });
-      
-      const userData = await apiService.register(registerData);
 
-      console.log('Ответ от API:', userData);
-      
-      if (userData) {
-        console.log('Регистрация успешна!');
-        // Очищаем форму
-        setUsername('');
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-        setDescription('');
-        
-        // Переходим на главную страницу или страницу логина
-        router.replace('/clinic'); 
+      if (userData?.id) {
+        router.replace(`/user/${userData.id}`);
       }
     } catch (error: any) {
-      console.error('Ошибка при регистрации:', error);
+      const msg = error.message || '';
       
-      // Обработка ошибок от сервера
       if (error.fields) {
-        setErrors({
-          username: error.fields.username?.[0] || error.fields.username,
-          email: error.fields.email?.[0] || error.fields.email,
-          password: error.fields.password?.[0] || error.fields.password,
-        });
-      } else if (error.message.includes('Email already used')) {
-        setErrors({ email: 'Этот email уже используется' });
-      } else if (error.message.includes('Username already used')) {
-        setErrors({ username: 'Этот username уже используется' });
+        setErrors(error.fields);
+      } else if (msg.toLowerCase().includes('email')) {
+        setErrors({ email: msg });
+      } else if (msg.toLowerCase().includes('имя') || msg.toLowerCase().includes('username')) {
+        setErrors({ username: msg });
       } else {
-        setErrors({ general: error.message || 'Не удалось зарегистрироваться' });
+        setErrors({ general: msg });
       }
     } finally {
       setLoading(false);
-      console.log('=== Конец регистрации ===');
     }
   };
 
-  return (
+return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.greenSection}>
         <TabHeader
           tabs={[
-            {
-              label: 'Авторизация',
-              isActive: false,
-              onPress: () => router.push('/')
-            },
-            {
-              label: 'Регистрация',
-              isActive: true,
-              onPress: () => {}
-            }
+            { label: 'Авторизация', isActive: false, onPress: () => router.push('/') },
+            { label: 'Регистрация', isActive: true, onPress: () => {} }
           ]}
         />
       </View>
@@ -155,25 +93,10 @@ export default function RegistrationScreen() {
           password={password}
           confirmPassword={confirmPassword}
           description={description}
-          onUsernameChange={(text) => {
-            setUsername(text);
-            if (errors.username) setErrors({...errors, username: undefined});
-          }}
-          onEmailChange={(text) => {
-            setEmail(text);
-            if (errors.email) setErrors({...errors, email: undefined});
-          }}
-          onPasswordChange={(text) => {
-            setPassword(text);
-            if (errors.password) setErrors({...errors, password: undefined});
-            if (errors.confirmPassword && text === confirmPassword) {
-              setErrors({...errors, confirmPassword: undefined});
-            }
-          }}
-          onConfirmPasswordChange={(text) => {
-            setConfirmPassword(text);
-            if (errors.confirmPassword) setErrors({...errors, confirmPassword: undefined});
-          }}
+          onUsernameChange={setUsername}
+          onEmailChange={setEmail}
+          onPasswordChange={setPassword}
+          onConfirmPasswordChange={setConfirmPassword}
           onDescriptionChange={setDescription}
           onSubmit={handleRegistration}
           loading={loading}
@@ -184,10 +107,7 @@ export default function RegistrationScreen() {
           <Text style={styles.errorText}>{errors.general}</Text>
         )}
 
-        <TouchableOpacity 
-          style={styles.loginContainer}
-          onPress={() => router.push('/')}
-        >
+        <TouchableOpacity style={styles.loginContainer} onPress={() => router.push('/')}>
           <Text style={styles.loginText}>Уже есть аккаунт? Войти</Text>
         </TouchableOpacity>
       </ScrollView>

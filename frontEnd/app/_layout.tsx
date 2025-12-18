@@ -47,7 +47,6 @@ export default function RootLayout() {
               
               {/* Защищенные маршруты */}
               <Stack.Screen name="(tabs)" />             // Основное приложение
-              <Stack.Screen name="clinic" />             // Клиника
               <Stack.Screen name="user/[id]" />          // Профиль по id
               <Stack.Screen name="new-post" />           // Новый пост
               <Stack.Screen name="chat/[id]" />          // Чат

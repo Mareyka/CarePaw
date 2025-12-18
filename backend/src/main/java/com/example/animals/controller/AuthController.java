@@ -30,14 +30,17 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Username already used");
         }
 
-        User user = new User(req.getUsername(), req.getEmail(), req.getPassword());
-
-        if (req.getDescription() != null) {
-            user.setDescription(req.getDescription());
-        }
+        // Используем обновленный конструктор (4 аргумента)
+        User user = new User(
+                req.getUsername(),
+                req.getEmail(),
+                req.getPassword(),
+                req.getDescription()
+        );
 
         User saved = userRepository.save(user);
 
+        // Мапим в ответ
         UserResponse resp = new UserResponse(
                 saved.getId(),
                 saved.getUsername(),
