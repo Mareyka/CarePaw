@@ -63,6 +63,14 @@ export default function RootLayout() {
                   headerShown: false,
                 }} 
               />
+              <Stack.Screen
+                name="shelter-pet-card"
+                options={{
+                  presentation: 'transparentModal',
+                  animation: 'fade',
+                  headerShown: false,
+                }}
+              />
             </Stack>
           </AuthGuard>
         </AuthProvider>

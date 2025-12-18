@@ -15,6 +15,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${file.upload.avatars-dir}")
     private String avatarsUploadDir;
 
+    @Value("${file.upload.pets-dir}")
+    private String petsUploadDir;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Для постов
@@ -24,14 +27,20 @@ public class WebConfig implements WebMvcConfigurer {
         // Для аватарок
         registry.addResourceHandler("/api/images/avatars/**")
                 .addResourceLocations("file:" + avatarsUploadDir);
+
+        // для питомцев
+        registry.addResourceHandler("/api/images/pets/**")
+                .addResourceLocations("file:" + petsUploadDir);
+
     }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:8080", "http://localhost:3000")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        registry.addMapping("/**")
+                .allowedOriginPatterns("*")
+                .allowedMethods("*")
                 .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowCredentials(false);
     }
+
 }
