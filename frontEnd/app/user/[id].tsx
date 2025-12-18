@@ -10,19 +10,28 @@ import {
   FlatList,
   Dimensions,
   ActivityIndicator,
-  ScrollView
+  ScrollView,
+  Alert
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService, UserResponse } from '../../api/service';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import TabBar from '@/components/TabBar';
-import PostCard from '@/components/ui/PostCard';
 import Button from '@/components/Button';
 import AppointmentSignUp from '../AppointmentSignUp';
+import PostThumbnail from '@/components/PostThumbnail';
 
 const API_URL = 'http://localhost:8080/api';
 const { width } = Dimensions.get('window');
+const COLUMN_WIDTH = width / 3; // Вынесли константу, чтобы была доступна везде
+
+// Определяем интерфейс для поста, чтобы уйти от ошибки 'never'
+interface UserPost {
+  id: number;
+  photoUrl: string;
+  title?: string;
+}
 
 export default function UserProfile() {
   const { id } = useLocalSearchParams();
@@ -32,79 +41,117 @@ export default function UserProfile() {
   const [profileUser, setProfileUser] = useState<UserResponse | null>(null);
   const [pets, setPets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Указываем тип <UserPost[]>, чтобы убрать ошибки Property 'id' does not exist on type 'never'
+  const [posts, setPosts] = useState<UserPost[]>([]);
 
   const [isAppointmentModalVisible, setIsAppointmentModalVisible] = useState(false);
-
-
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [counts, setCounts] = useState({ followers: 0, following: 0 });
-
-
-  // Константы для сетки постов
-  const numColumns = 3;
-  const itemSize = width / numColumns;
 
   const isClinic = profileUser?.role === 'CLINIC';
   const isShelter = profileUser?.role === 'SHELTER';
   const isOwnProfile = currentUser?.id?.toString() === id?.toString();
   const averageRating = 4;
 
+
+  // Доступные типы вкладок
+  type TabType = 'POSTS' | 'LIKES' | 'SAVED';
+  const [activeTab, setActiveTab] = useState<TabType>('POSTS');
+
   useEffect(() => {
     fetchData();
+    fetchUserPosts();
   }, [id]);
 
-const fetchData = async () => {
-  setLoading(true);
-  try {
-    const userData = await apiService.getUserById(id as string);
-    if (userData) {
-      setProfileUser(userData);
-
-      // Загружаем актуальные счетчики с сервера
-      const subCounts = await apiService.getSubscriptionCounts(id as string);
-      setCounts(subCounts);
-
-      // ПРОВЕРКА СТАТУСА
-      if (currentUser && currentUser.id.toString() !== id?.toString()) {
-        const subStatus = await apiService.checkSubscription(id as string);
-        console.log("Статус подписки из БД:", subStatus.subscribed); // Добавь лог для проверки
-        setIsSubscribed(subStatus.subscribed);
+  const fetchUserPosts = async () => {
+    try {
+      const response = await fetch(`${API_URL}/posts?userId=${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(data);
       }
+    } catch (error) {
+      console.error('Ошибка загрузки постов:', error);
+    }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const userData = await apiService.getUserById(id as string);
+      if (userData) {
+        setProfileUser(userData);
+        const subCounts = await apiService.getSubscriptionCounts(id as string);
+        setCounts(subCounts);
+
+        if (currentUser && currentUser.id.toString() !== id?.toString()) {
+          const subStatus = await apiService.checkSubscription(id as string);
+          setIsSubscribed(subStatus.subscribed);
+        }
+      }
+      const petsResponse = await axios.get(`${API_URL}/pets?userId=${id}`);
+      setPets(petsResponse.data);
+    } catch (error) {
+      console.error("Error loading profile data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+const fetchTabData = async (tab: TabType) => {
+  setLoading(true);
+  setActiveTab(tab);
+  
+  try {
+    let url = '';
+    // Определяем URL на основе структуры твоего контроллера
+    switch (tab) {
+      case 'POSTS':
+        url = `${API_URL}/posts?userId=${id}`;
+        break;
+      case 'LIKES':
+        url = `${API_URL}/posts/user/${id}/liked-posts`;
+        break;
+      case 'SAVED':
+        url = `${API_URL}/posts/user/${id}/saved-posts`;
+        break;
     }
 
-    // 4. Загружаем питомцев
-    const petsResponse = await axios.get(`${API_URL}/pets?userId=${id}`);
-    setPets(petsResponse.data);
-    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // Твой контроллер ожидает этот заголовок для mapToDetailedResponse
+        'X-User-Id': currentUser?.id?.toString() || '',
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setPosts(data);
+    } else {
+      setPosts([]);
+    }
   } catch (error) {
-    console.error("Error loading profile data:", error);
+    console.error("Ошибка при смене вкладки:", error);
+    setPosts([]);
   } finally {
     setLoading(false);
   }
 };
 
-
-const handleSubscription = async () => {
-  if (!currentUser) return;
-
-  try {
-    // 1. Выполняем переключение (toggle)
-    const result = await apiService.toggleSubscription(id as string);
-    
-    // 2. Устанавливаем статус кнопки напрямую из ответа сервера
-    setIsSubscribed(result.trim() === "Subscribed");
-
-    // 3. Просто запрашиваем свежие счетчики. 
-    // Это надежнее, чем гадать и прибавлять +1 в коде.
-    const freshCounts = await apiService.getSubscriptionCounts(id as string);
-    setCounts(freshCounts);
-
-    
-
-  } catch (error: any) {
-    console.error("Детальная ошибка:", error.response?.data || error.message)
-  }
-};
+  const handleSubscription = async () => {
+    if (!currentUser) return;
+    try {
+      const result = await apiService.toggleSubscription(id as string);
+      setIsSubscribed(result.trim() === "Subscribed");
+      const freshCounts = await apiService.getSubscriptionCounts(id as string);
+      setCounts(freshCounts);
+    } catch (error: any) {
+      console.error("Ошибка подписки:", error.message);
+    }
+  };
 
   if (loading) {
     return (
@@ -126,170 +173,153 @@ const handleSubscription = async () => {
     <SafeAreaView style={styles.safeArea}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.headerContainer}>
-          
-          {/* 1. ВЕРХНЯЯ ПАНЕЛЬ */}
-          <View style={styles.menuContainer}>
-            {!isOwnProfile ? (
-              <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                <Ionicons name="arrow-back" size={24} color="#4E5B3F" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity onPress={() => router.push('/settings')}>
-                <Image 
-                  source={require('@/assets/images/menu.svg')} 
-                  style={styles.menuIcon} 
-                />
-              </TouchableOpacity>
-            )}
-          </View>
+      <FlatList
+        data={posts}
+        numColumns={3}
+        keyExtractor={(item) => item.id.toString()} // Теперь 'id' существует
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View>
+            <View style={styles.headerContainer}>
+              {/* 1. ВЕРХНЯЯ ПАНЕЛЬ */}
+              <View style={styles.menuContainer}>
+                {!isOwnProfile ? (
+                  <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                    <Ionicons name="arrow-back" size={24} color="#4E5B3F" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => router.push('/settings')}>
+                    <Ionicons name="menu" size={24} color="#4E5B3F" />
+                  </TouchableOpacity>
+                )}
+              </View>
 
-          {/* 2. АВАТАР И СТАТИСТИКА */}
-          <View style={styles.row2}>
-            <View style={styles.avatarColumn}>
-              <Image 
-                source={
-                  profileUser.photo && profileUser.photo.trim() !== "" 
-                    ? { uri: profileUser.photo } 
-                    : require('@/assets/images/default_avatar.png')
-                } 
-                defaultSource={require('@/assets/images/default_avatar.png')}
-                style={styles.avatarImage}
-              />
+              {/* 2. АВАТАР И СТАТИСТИКА */}
+              <View style={styles.row2}>
+                <View style={styles.avatarColumn}>
+                  <Image 
+                    source={profileUser.photo?.trim() ? { uri: profileUser.photo } : require('@/assets/images/default_avatar.png')} 
+                    style={styles.avatarImage}
+                  />
+                  {(isClinic || isShelter) && (
+                    <View style={styles.starsContainer}>
+                      {[1, 2, 3, 4, 5].map((num) => (
+                        <Ionicons key={num} name="star" size={14} color={averageRating >= num ? '#EEB16E' : '#CCCCCC'} />
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.infoColumn}>
+                  <Text style={styles.userName}>{profileUser.username}</Text>
+                  <Text style={styles.roleText}>{isClinic ? "Ветклиника" : isShelter ? "Приют" : "Пользователь"}</Text>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statNumber}>{posts.length}</Text>
+                      <Text style={styles.statLabel}>публикаций</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statNumber}>{counts.followers}</Text>
+                      <Text style={styles.statLabel}>подписчиков</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* 3. КНОПКИ ДЕЙСТВИЯ И ОПИСАНИЕ */}
+              <View style={styles.row3}>
+                <View style={styles.actionButtonsContainer}>
+                  {!isOwnProfile ? (
+                    isClinic ? (
+                      <Button title="Записаться" onPress={() => setIsAppointmentModalVisible(true)} />
+                    ) : (
+                      <Button 
+                        title={isSubscribed ? "Вы подписаны" : "Подписаться"} 
+                        onPress={handleSubscription} 
+                        variant={isSubscribed ? "outline" : "primary"} 
+                      />
+                    )
+                  ) : (
+                    <Button title="Настройки" onPress={() => router.push('/settings')} variant="outline" />
+                  )}
+                </View>
+
+                <View style={styles.descriptionContainer}>
+                  <Text style={styles.descriptionText}>{profileUser.description || "Информация отсутствует"}</Text>
+                </View>
+              </View>
+
+              {/* 4. КОНТАКТЫ */}
               {(isClinic || isShelter) && (
-                <View style={styles.starsContainer}>
-                  {[1, 2, 3, 4, 5].map((num) => (
-                    <Image
-                      key={num}
-                      source={require('@/assets/images/star.png')}
-                      style={[styles.starIcon, { tintColor: averageRating >= num ? '#EEB16E' : '#CCCCCC' }]}
-                    />
+                <View style={styles.row4}>
+                  {['Сообщение', 'Email', 'Телефон'].map((label) => (
+                    <TouchableOpacity key={label} style={styles.contactButton}>
+                      <Text style={styles.contactButtonText}>{label}</Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
               )}
             </View>
 
-            <View style={styles.infoColumn}>
-              <Text style={styles.userName}>{profileUser.username}</Text>
-              <Text style={styles.roleText}>
-                {isClinic ? "Ветклиника" : isShelter ? "Приют" : "Пользователь"}
-              </Text>
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>0</Text>
-                  <Text style={styles.statLabel}>публикаций</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{counts.followers}</Text>
-                  <Text style={styles.statLabel}>подписчиков</Text>
-                </View>
+            {/* --- СЕКЦИЯ ЖИВОТНЫХ --- */}
+            {!isClinic && (
+              <View style={styles.storyFeed}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {pets.map((pet) => (
+                    <TouchableOpacity key={pet.id} style={styles.storyItem} onPress={() => router.push({ pathname: '/pet-passport', params: { petId: pet.id } })}>
+                      <View style={styles.petCircle}>
+                        <Image source={pet.photoUrl ? { uri: pet.photoUrl } : require('@/assets/images/default_avatar.png')} style={styles.petImage} />
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
-            </View>
-          </View>
+            )}
 
-          {/* 3. КНОПКИ ДЕЙСТВИЯ И ОПИСАНИЕ */}
-          <View style={styles.row3}>
-            <View style={styles.actionButtonsContainer}>
-                {/* Если это НЕ мой профиль, показываем кнопку действия */}
-                {!isOwnProfile ? (
-                    isClinic ? (
-                    <Button 
-                        title="Записаться" 
-                        onPress={() => setIsAppointmentModalVisible(true)} 
-                        />
-                    ) : (
-                    <Button 
-                        // Если isSubscribed === true, меняем текст
-                        title={isSubscribed ? "Вы подписаны" : "Подписаться"} 
-                        onPress={handleSubscription} 
-                        // Можно менять стиль (variant), если ты его настроил в компоненте Button
-                        variant={isSubscribed ? "outline" : "primary"} 
-                    />
-                    )
-                ) : (
-                    /* Если это МОЙ профиль, здесь будет пусто, чтобы описание справа не съезжало */
-                    <View style={{ flex: 0.8 }} />
-                )}
-                </View>
-
-            <View style={styles.descriptionContainer}>
-              <Text style={styles.descriptionText}>
-                {profileUser.description || "Информация отсутствует"}
-              </Text>
-            </View>
-          </View>
-
-          {/* 4. КОНТАКТЫ (ДЛЯ ОРГАНИЗАЦИЙ) */}
-          {(isClinic || isShelter) && (
-            <View style={styles.row4}>
-              {['Сообщение', 'Email', 'Телефон'].map((label) => (
-                <TouchableOpacity key={label} style={styles.contactButton}>
-                  <Text style={styles.contactButtonText}>{label}</Text>
+            <View style={styles.divider} />
+              <View style={styles.row5}>
+                <TouchableOpacity onPress={() => fetchTabData('POSTS')}>
+                  <Image 
+                    source={require('@/assets/images/posts.svg')} 
+                    style={{ opacity: activeTab === 'POSTS' ? 1 : 0.3 }} 
+                  />
                 </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
 
-        {/* --- СЕКЦИЯ ЖИВОТНЫХ --- */}
-        {!isClinic && (
-          <View style={styles.storyFeed}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {pets.map((pet) => (
-                <TouchableOpacity 
-                  key={pet.id} 
-                  style={styles.storyItem}
-                  onPress={() => router.push({ pathname: '/pet-passport', params: { petId: pet.id } })}
-                >
-                  <View style={styles.petCircle}>
-                    <Image 
-                      source={pet.photoUrl ? { uri: pet.photoUrl } : require('@/assets/images/default_avatar.png')}
-                      style={styles.petImage}
-                    />
-                  </View>
+                <TouchableOpacity onPress={() => fetchTabData('LIKES')}>
+                  <Image 
+                    source={require('@/assets/images/like.svg')} 
+                    style={{ opacity: activeTab === 'LIKES' ? 1 : 0.3 }} 
+                  />
                 </TouchableOpacity>
-              ))}
-              {isOwnProfile && (
-                <TouchableOpacity style={styles.storyItem} onPress={() => console.log('Add pet')}>
-                  <View style={[styles.petCircle, styles.addPetCircle]}>
-                    <Text style={styles.addPetPlus}>+</Text>
-                  </View>
+
+                <TouchableOpacity onPress={() => fetchTabData('SAVED')}>
+                  <Image 
+                    source={require('@/assets/images/Tag.svg')} 
+                    style={{ opacity: activeTab === 'SAVED' ? 1 : 0.3 }} 
+                  />
                 </TouchableOpacity>
-              )}
-            </ScrollView>
+              </View>
+              <View style={styles.divider} />
           </View>
+        }
+        renderItem={({ item }) => (
+          <PostThumbnail 
+            photoUrl={item.photoUrl} 
+            onPress={() => console.log('Клик по посту', item.id)} // Просто лог
+          />
         )}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Нет публикаций</Text>
+          </View>
+        }
+        contentContainerStyle={styles.listContent}
+      />
 
-        {/* 5. ВКЛАДКИ И СЕТКА */}
-        <View style={styles.divider} />
-        <View style={styles.row5}>
-          <Image source={require('@/assets/images/posts.svg')} />
-          {isClinic || isShelter ? (
-            <>
-              <Image source={require('@/assets/images/documents.svg')} />
-              <Image source={require('@/assets/images/comm.svg')} />
-            </>
-          ) : (
-            <>
-              <Image source={require('@/assets/images/like.svg')} />
-              <Image source={require('@/assets/images/Tag.svg')} />
-            </>
-          )}
-        </View>
-        <View style={styles.divider} />
-
-        {/* Тут будет ваша FlatList или сетка постов */}
-        <View style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#4E5B3F', opacity: 0.5 }}>Нет публикаций</Text>
-        </View>
-      </ScrollView>
-
-
-        <AppointmentSignUp 
-                visible={isAppointmentModalVisible} 
-                onClose={() => setIsAppointmentModalVisible(false)} 
-            />
+      <AppointmentSignUp 
+          visible={isAppointmentModalVisible} 
+          onClose={() => setIsAppointmentModalVisible(false)} 
+      />
       <TabBar />
     </SafeAreaView>
   );
@@ -456,5 +486,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingHorizontal: 40,
     marginVertical: 5,
+  },
+  listContent: {
+    backgroundColor: '#ECE1D1',
+    flexGrow: 1,
+  },
+  headerSpacer: {
+    padding: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4E5B3F',
+    marginBottom: 10,
+  },
+  thumbnailContainer: {
+    width: COLUMN_WIDTH,
+    height: COLUMN_WIDTH, // Делаем квадратным
+    padding: 1, // Тонкая граница между фото
+  },
+  thumbnailImage: {
+    flex: 1,
+    backgroundColor: '#ddd',
+  },
+  emptyContainer: {
+    marginTop: 50,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: '#4E5B3F',
+    opacity: 0.5,
   },
 });
