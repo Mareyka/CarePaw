@@ -32,6 +32,12 @@ export default function UserProfile() {
   const [pets, setPets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+
+
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [counts, setCounts] = useState({ followers: 0, following: 0 });
+
+
   // Константы для сетки постов
   const numColumns = 3;
   const itemSize = width / numColumns;
@@ -45,20 +51,63 @@ export default function UserProfile() {
     fetchData();
   }, [id]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const userData = await apiService.getUserById(id as string);
+const fetchData = async () => {
+  setLoading(true);
+  try {
+    const userData = await apiService.getUserById(id as string);
+    if (userData) {
       setProfileUser(userData);
 
-      const petsResponse = await axios.get(`${API_URL}/pets?userId=${id}`);
-      setPets(petsResponse.data);
-    } catch (error) {
-      console.error("Error loading profile data:", error);
-    } finally {
-      setLoading(false);
+      // Загружаем актуальные счетчики с сервера
+      const subCounts = await apiService.getSubscriptionCounts(id as string);
+      setCounts(subCounts);
+
+      // ПРОВЕРКА СТАТУСА
+      if (currentUser && currentUser.id.toString() !== id?.toString()) {
+        const subStatus = await apiService.checkSubscription(id as string);
+        console.log("Статус подписки из БД:", subStatus.subscribed); // Добавь лог для проверки
+        setIsSubscribed(subStatus.subscribed);
+      }
     }
-  };
+
+    // 4. Загружаем питомцев
+    const petsResponse = await axios.get(`${API_URL}/pets?userId=${id}`);
+    setPets(petsResponse.data);
+    
+  } catch (error) {
+    console.error("Error loading profile data:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const handleSubscription = async () => {
+  if (!currentUser) return;
+
+  try {
+    const result = await apiService.toggleSubscription(id as string);
+    console.log("Результат:", result);
+
+    if (result.trim() === "Subscribed") {
+      setIsSubscribed(true);
+      setCounts(prev => ({
+        ...prev,
+        followers: Number(prev.followers) + 1
+      }));
+    } else {
+      setIsSubscribed(false);
+      setCounts(prev => ({
+        ...prev,
+        followers: Math.max(0, Number(prev.followers) - 1)
+      }));
+    }
+    
+    // НЕ ВЫЗЫВАЙ здесь fetchData(), иначе он затрет локальный плюс-один старыми данными с сервера!
+  } catch (error) {
+    console.error(error);
+  }
+};
 
   if (loading) {
     return (
@@ -135,7 +184,7 @@ export default function UserProfile() {
                   <Text style={styles.statLabel}>публикаций</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>0</Text>
+                  <Text style={styles.statNumber}>{Number(counts.followers)}</Text>
                   <Text style={styles.statLabel}>подписчиков</Text>
                 </View>
               </View>
@@ -150,7 +199,13 @@ export default function UserProfile() {
                     isClinic ? (
                     <Button title="Записаться" onPress={() => console.log('Запись')} />
                     ) : (
-                    <Button title="Подписаться" onPress={() => console.log('Подписка')} />
+                    <Button 
+                        // Если isSubscribed === true, меняем текст
+                        title={isSubscribed ? "Вы подписаны" : "Подписаться"} 
+                        onPress={handleSubscription} 
+                        // Можно менять стиль (variant), если ты его настроил в компоненте Button
+                        variant={isSubscribed ? "outline" : "primary"} 
+                    />
                     )
                 ) : (
                     /* Если это МОЙ профиль, здесь будет пусто, чтобы описание справа не съезжало */

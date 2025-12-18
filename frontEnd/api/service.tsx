@@ -17,7 +17,9 @@ export interface UserResponse {
   description?: string | null;
   photo?: string | null;
   createdAt?: string;
-  // Убираем token из UserResponse, так как его нет в ответе сервера
+  // Добавляем эти поля:
+  followersCount?: number; 
+  followingCount?: number;
 }
 
 class ApiService {
@@ -317,6 +319,79 @@ class ApiService {
   } catch (error) {
     console.error('Error fetching user by id:', error);
     return null;
+  }
+}
+
+
+// Метод для проверки статуса (чтобы кнопка знала, что писать)
+async checkSubscription(followingId: string | number): Promise<{ subscribed: boolean }> {
+  // Важно: берем ID текущего авторизованного пользователя
+  const followerId = this.currentUser?.id;
+  if (!followerId) return { subscribed: false };
+
+  try {
+    // Отправляем запрос на эндпоинт, который мы создали в Спринге
+    const response = await fetch(`${API_URL}/subscriptions/check?followerId=${followerId}&followingId=${followingId}`);
+    if (response.ok) {
+      const data = await response.json();
+      // Убедись, что ключ в JSON совпадает с тем, что шлет Java (subscribed или isSubscribed)
+      return { subscribed: data.isSubscribed || data.subscribed };
+    }
+    return { subscribed: false };
+  } catch (error) {
+    return { subscribed: false };
+  }
+}
+
+// Метод для переключения подписки
+async toggleSubscription(followingId: string | number): Promise<string> {
+  // Нам нужно знать ID того, кто нажимает кнопку
+  const followerId = this.currentUser?.id; 
+  
+  if (!followerId) throw new Error("Пользователь не авторизован");
+
+  try {
+    const response = await fetch(
+      `${API_URL}/subscriptions/toggle/${followingId}?followerId=${followerId}`, 
+      { method: 'POST' }
+    );
+    
+    if (!response.ok) throw new Error("Ошибка сервера");
+    
+    return await response.text(); // Вернет "Subscribed" или "Unsubscribed"
+  } catch (error) {
+    throw error;
+  }
+}
+
+
+// Получение количества подписчиков и подписок
+async getSubscriptionCounts(userId: number | string): Promise<{ followers: number; following: number }> {
+  try {
+    const response = await fetch(`${API_URL}/subscriptions/count/${userId}`);
+    
+    if (response.ok) {
+      return await response.json();
+    }
+    return { followers: 0, following: 0 };
+  } catch (error) {
+    console.error('💥 Get counts error:', error);
+    return { followers: 0, following: 0 };
+  }
+}
+
+// Проверка, подписан ли я (текущий юзер) на этого пользователя
+async checkSubscriptionStatus(followerId: number, followingId: number | string): Promise<boolean> {
+  try {
+    // Нужно будет добавить такой эндпоинт в Спринг или проверять через список подписок
+    const response = await fetch(`${API_URL}/subscriptions/check?followerId=${followerId}&followingId=${followingId}`);
+    if (response.ok) {
+      const data = await response.json();
+      return data.isSubscribed;
+    }
+    return false;
+  } catch (error) {
+    return false;
   }
 }
 }
