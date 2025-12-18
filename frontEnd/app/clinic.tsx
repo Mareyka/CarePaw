@@ -56,6 +56,7 @@ export default function Clinic(){
                   source={require('../assets/images/default_avatar.png')}
                   style={styles.iconPlaceholder} />
               </View>
+              
               {/* Звезды/рейтинг */}
               <View style={styles.starsContainer}>
                 {[1, 2, 3, 4, 5].map((num) => (
@@ -191,7 +192,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 16,
   },
-  
+  starIcon: {
+  width: 15,
+  height: 15,
+  marginHorizontal: 1,
+},
+
+addBtnText: {
+  fontSize: 34,
+  color: '#697c44',
+  textAlign: 'center',
+},
   avatarContainer: {
     flex: 1,
     alignItems: 'center',
