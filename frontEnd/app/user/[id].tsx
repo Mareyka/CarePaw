@@ -19,6 +19,7 @@ import axios from 'axios';
 import TabBar from '@/components/TabBar';
 import PostCard from '@/components/ui/PostCard';
 import Button from '@/components/Button';
+import AppointmentSignUp from '../AppointmentSignUp';
 
 const API_URL = 'http://localhost:8080/api';
 const { width } = Dimensions.get('window');
@@ -32,6 +33,7 @@ export default function UserProfile() {
   const [pets, setPets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [isAppointmentModalVisible, setIsAppointmentModalVisible] = useState(false);
 
 
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -86,26 +88,19 @@ const handleSubscription = async () => {
   if (!currentUser) return;
 
   try {
+    // 1. Выполняем переключение (toggle)
     const result = await apiService.toggleSubscription(id as string);
-    console.log("Результат:", result);
-
-    if (result.trim() === "Subscribed") {
-      setIsSubscribed(true);
-      setCounts(prev => ({
-        ...prev,
-        followers: Number(prev.followers) + 1
-      }));
-    } else {
-      setIsSubscribed(false);
-      setCounts(prev => ({
-        ...prev,
-        followers: Math.max(0, Number(prev.followers) - 1)
-      }));
-    }
     
-    // НЕ ВЫЗЫВАЙ здесь fetchData(), иначе он затрет локальный плюс-один старыми данными с сервера!
+    // 2. Устанавливаем статус кнопки напрямую из ответа сервера
+    setIsSubscribed(result.trim() === "Subscribed");
+
+    // 3. Просто запрашиваем свежие счетчики. 
+    // Это надежнее, чем гадать и прибавлять +1 в коде.
+    const freshCounts = await apiService.getSubscriptionCounts(id as string);
+    setCounts(freshCounts);
+
   } catch (error) {
-    console.error(error);
+    console.error("Ошибка подписки:", error);
   }
 };
 
@@ -184,7 +179,7 @@ const handleSubscription = async () => {
                   <Text style={styles.statLabel}>публикаций</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{Number(counts.followers)}</Text>
+                  <Text style={styles.statNumber}>{counts.followers}</Text>
                   <Text style={styles.statLabel}>подписчиков</Text>
                 </View>
               </View>
@@ -197,7 +192,10 @@ const handleSubscription = async () => {
                 {/* Если это НЕ мой профиль, показываем кнопку действия */}
                 {!isOwnProfile ? (
                     isClinic ? (
-                    <Button title="Записаться" onPress={() => console.log('Запись')} />
+                    <Button 
+                        title="Записаться" 
+                        onPress={() => setIsAppointmentModalVisible(true)} 
+                        />
                     ) : (
                     <Button 
                         // Если isSubscribed === true, меняем текст
@@ -285,6 +283,11 @@ const handleSubscription = async () => {
         </View>
       </ScrollView>
 
+
+        <AppointmentSignUp 
+                visible={isAppointmentModalVisible} 
+                onClose={() => setIsAppointmentModalVisible(false)} 
+            />
       <TabBar />
     </SafeAreaView>
   );
