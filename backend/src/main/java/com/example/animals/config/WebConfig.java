@@ -15,6 +15,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${file.upload.avatars-dir}")
     private String avatarsUploadDir;
 
+    @Value("${file.upload.pets-dir}")
+    private String petsUploadDir;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Для постов
@@ -24,6 +27,11 @@ public class WebConfig implements WebMvcConfigurer {
         // Для аватарок
         registry.addResourceHandler("/api/images/avatars/**")
                 .addResourceLocations("file:" + avatarsUploadDir);
+
+        // для питомцев
+        registry.addResourceHandler("/api/images/pets/**")
+                .addResourceLocations("file:" + petsUploadDir);
+
     }
 
     @Override
@@ -34,4 +42,5 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .allowCredentials(false);
     }
+
 }

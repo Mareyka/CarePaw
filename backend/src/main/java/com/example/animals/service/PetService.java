@@ -38,6 +38,13 @@ public class PetService {
         }
     }
 
+    // Сохранить питомца (используется при обновлении фото)
+    public Pet save(Pet pet) {
+        return petRepository.save(pet);
+    }
+
+
+
     // Получить питомца по ID
     public Pet getPetById(Long id) {
         return petRepository.findById(id).orElse(null);

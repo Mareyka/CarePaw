@@ -2,10 +2,17 @@ package com.example.animals.controller;
 
 import com.example.animals.model.Pet;
 import com.example.animals.service.PetService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/pets")
@@ -58,4 +65,39 @@ public class PetController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @PostMapping(value = "/{petId}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Pet> uploadPetPhoto(
+            @PathVariable Long petId,
+            @RequestParam("photo") MultipartFile photo
+    ) throws IOException {
+        Pet pet = petService.getPetById(petId);
+        if (pet == null) return ResponseEntity.notFound().build();
+
+        String fileName = savePetFile(photo); // сохрани файл в uploads/images/pets/
+        pet.setPhotoUrl(fileName);
+        Pet saved = petService.save(pet);
+
+        return ResponseEntity.ok(saved);
+    }
+
+    private String savePetFile(MultipartFile file) throws IOException {
+        String originalName = file.getOriginalFilename();
+        String ext = "";
+        if (originalName != null && originalName.contains(".")) {
+            ext = originalName.substring(originalName.lastIndexOf("."));
+        }
+        String newName = UUID.randomUUID() + ext;
+
+        Path uploadPath = Paths.get(System.getProperty("user.dir"), "uploads/images/pets/");
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        Path target = uploadPath.resolve(newName);
+        file.transferTo(target.toFile());
+
+        return newName;
+    }
+
 }
