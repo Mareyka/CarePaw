@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
@@ -7,6 +7,10 @@ import Button from '../../components/Button';
 import UserRecomend from '../../components/UserRecomend';
 import { GlobalStyles } from '../../constants/theme';
 import { useRouter } from 'expo-router';
+import { 
+  saveQuestionnaireResult, 
+  QuestionnaireHistoryItem 
+} from '../../services/questionnaireHistory';
 
 type Question = {
   id: number;
@@ -19,26 +23,60 @@ export default function QuestionnaireScreen() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [totalPoints, setTotalPoints] = useState(0);
 
   const questions: Question[] = [
     {
       id: 1,
-      question: "Какое у вашего животное?",
+      question: "Как ваш питомец ведет себя сегодня?",
       options: [
-        { text: "Собака", points: 0 },
-        { text: "Кошка", points: 0 },
-        { text: "Другое", points: 1 }
+        { text: "Активный и игривый", points: 0 },
+        { text: "Обычное поведение", points: 0 },
+        { text: "Немного вялый", points: 1 },
+        { text: "Апатичный, лежит весь день", points: 2 }
       ]
     },
     {
       id: 2,
-      question: "Выберите симптомы:",
+      question: "Какой у животного аппетит?",
       options: [
-        { text: "Сухой нос", points: 1 },
-        { text: "Не ходит", points: 2 },
-        { text: "Тошнит", points: 2 },
-        { text: "Чихает", points: 1 },
-        { text: "Чешется", points: 1 }
+        { text: "Ест с аппетитом, как обычно", points: 0 },
+        { text: "Ест немного меньше обычного", points: 1 },
+        { text: "Отказывается от еды", points: 2 },
+        { text: "Не притрагивается к еду весь день", points: 3 }
+      ]
+    },
+    {
+      id: 3,
+      question: "Как животное пьет воду?",
+      options: [
+        { text: "Пьет нормально", points: 0 },
+        { text: "Пьет больше обычного", points: 1 },
+        { text: "Пьет меньше обычного", points: 1 },
+        { text: "Отказывается от воды", points: 2 }
+      ]
+    },
+    {
+      id: 4,
+      question: "Есть ли изменения в туалете?",
+      options: [
+        { text: "Всё как обычно", points: 0 },
+        { text: "Диарея (жидкий стул)", points: 1 },
+        { text: "Запор", points: 1 },
+        { text: "Кровь в моче или кале", points: 3 },
+        { text: "Не ходит в туалет сутки", points: 2 }
+      ]
+    },
+    {
+      id: 5,
+      question: "Что заметили в поведении?",
+      options: [
+        { text: "Всё в порядке", points: 0 },
+        { text: "Чихает или кашляет", points: 1 },
+        { text: "Чешется или трясет головой", points: 1 },
+        { text: "Рвота", points: 2 },
+        { text: "Хромает, не наступает на лапу", points: 2 },
+        { text: "Тяжело дышит или одышка", points: 2 }
       ]
     }
   ];
@@ -55,44 +93,55 @@ export default function QuestionnaireScreen() {
     }
   };
 
-  const calculateResults = (userAnswers: number[]) => {
-    let totalPoints = 0;
+  const calculateResults = async (userAnswers: number[]) => {
+    let points = 0;
     
     userAnswers.forEach((answerIndex, questionIndex) => {
       if (answerIndex !== undefined) {
-        const points = questions[questionIndex].options[answerIndex].points;
-        totalPoints += points;
+        const optionPoints = questions[questionIndex].options[answerIndex].points;
+        points += optionPoints;
       }
     });
 
+    setTotalPoints(points);
     setShowResults(true);
+    
+    // Сохраняем результат
+    await saveQuestionnaireResult({
+      date: new Date().toISOString(),
+      result: getResultMessage(points).title,
+      severity: getResultMessage(points).severity,
+      points: points,
+      answers: userAnswers
+    });
   };
 
-  const getResultMessage = () => {
-    const totalPoints = answers.reduce((sum, answerIndex, questionIndex) => {
-      if (answerIndex !== undefined) {
-        return sum + questions[questionIndex].options[answerIndex].points;
-      }
-      return sum;
-    }, 0);
+  const getResultMessage = (points?: number) => {
+    const finalPoints = points !== undefined ? points : totalPoints;
 
-    if (totalPoints <= 1) {
+    if (finalPoints <= 3) {
       return {
         title: "Всё в порядке",
         message: "Ваш питомец, скорее всего, здоров. Продолжайте наблюдать за его состоянием.",
-        severity: "low"
+        severity: "low" as const
       };
-    } else if (totalPoints <= 3) {
+    } else if (finalPoints <= 7) {
       return {
         title: "Лёгкое недомогание",
         message: "Рекомендуется наблюдать за питомцем и при ухудшении состояния обратиться к врачу.",
-        severity: "medium"
+        severity: "medium" as const
+      };
+    } else if (finalPoints <= 12) {
+      return {
+        title: "Требуется наблюдение",
+        message: "Есть признаки недомогания. Рекомендуем обратиться к ветеринару в ближайшее время.",
+        severity: "high" as const
       };
     } else {
       return {
-        title: "Требуется консультация",
-        message: "Похоже, у вашего животного аллергия или другое заболевание. Рекомендуем обратиться к ветеринару.",
-        severity: "high"
+        title: "Срочно к врачу",
+        message: "Состояние питомца вызывает серьезные опасения. Немедленно обратитесь к ветеринару.",
+        severity: "high" as const
       };
     }
   };
@@ -101,6 +150,7 @@ export default function QuestionnaireScreen() {
     setCurrentQuestion(0);
     setAnswers([]);
     setShowResults(false);
+    setTotalPoints(0);
   };
 
   if (showResults) {
@@ -120,6 +170,7 @@ export default function QuestionnaireScreen() {
               styles.lowSeverity
             ]}>
               <Text style={styles.resultTitle}>{result.title}</Text>
+              <Text style={styles.resultPoints}>Набрано баллов: {totalPoints}</Text>
               <Text style={styles.resultMessage}>{result.message}</Text>
               
               {result.severity === 'high' && (
@@ -140,8 +191,14 @@ export default function QuestionnaireScreen() {
                 style={styles.button}
               />
               <Button 
+                title="Посмотреть историю"
+                onPress={() => router.push('/(tabs)/questionnaireHistory')}
+                variant="outline"
+                style={styles.button}
+              />
+              <Button 
                 title="Вернуться на главную"
-                onPress={() => router.push('/(tabs)/')}
+                onPress={() => router.push('/(tabs)')}
                 style={styles.button}
               />
             </View>
@@ -242,7 +299,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 24,
-    color: '#666',
+    ...GlobalStyles.acsentColor,
     lineHeight: 22,
   },
   progressContainer: {
@@ -250,26 +307,28 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 14,
-    color: '#666',
+    color: '#5D684F',
     marginBottom: 8,
     textAlign: 'center',
   },
   progressBar: {
     height: 6,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#D0C7BA',
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#697C44',
     borderRadius: 3,
   },
   questionCard: {
-    backgroundColor: '#fff',
+    ...GlobalStyles.bgBase,
     padding: 20,
     borderRadius: 12,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#D0C7BA',
   },
   questionText: {
     fontSize: 18,
@@ -284,21 +343,21 @@ const styles = StyleSheet.create({
   optionButton: {
     padding: 16,
     borderRadius: 8,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'rgba(208, 199, 186, 0.3)',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#D0C7BA',
   },
   selectedOption: {
-    backgroundColor: '#e3f2fd',
-    borderColor: '#2196F3',
+    backgroundColor: 'rgba(105, 124, 68, 0.2)',
+    borderColor: '#697C44',
   },
   optionText: {
     fontSize: 16,
     textAlign: 'center',
-    color: '#333',
+    color: '#5D684F',
   },
   selectedOptionText: {
-    color: '#2196F3',
+    color: '#697C44',
     fontWeight: '500',
   },
   navigation: {
@@ -309,14 +368,17 @@ const styles = StyleSheet.create({
     minWidth: 120,
   },
   resultCard: {
-    backgroundColor: '#fff',
+    ...GlobalStyles.bgBase,
     padding: 20,
     borderRadius: 12,
     marginBottom: 20,
     borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: '#D0C7BA',
+    borderLeftColor: '#D0C7BA',
   },
   lowSeverity: {
-    borderLeftColor: '#4CAF50',
+    borderLeftColor: '#697C44',
   },
   mediumSeverity: {
     borderLeftColor: '#FF9800',
@@ -329,18 +391,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
     textAlign: 'center',
+    ...GlobalStyles.textSpecial,
+  },
+  resultPoints: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+    color: '#5D684F',
   },
   resultMessage: {
     fontSize: 16,
     lineHeight: 22,
     marginBottom: 16,
     textAlign: 'center',
+    color: '#5D684F',
   },
   clinicRecommendation: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#D0C7BA',
   },
   clinicTitle: {
     fontSize: 16,
@@ -353,6 +424,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   button: {
-    width: '100%',
+    width: '90%',
   },
 });
