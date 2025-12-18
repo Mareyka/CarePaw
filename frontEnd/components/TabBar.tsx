@@ -8,10 +8,12 @@ import AddPost_icon from '../assets/TabBar_icons/AddPost_icon';
 import Chat_icon from '../assets/TabBar_icons/Chat_icon';
 import Profile_icon from '../assets/TabBar_icons/Profile_icon';
 import { GlobalStyles } from '../constants/theme';
+import { useAuth } from '../contexts/AuthContext';
 
 const TabBar = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const tabs = [    
     { 
@@ -37,7 +39,7 @@ const TabBar = () => {
     { 
       id: 'profile', 
       icon: <Profile_icon />,
-      route: '/user' // Профиль в корне
+      route: user?.id ? `/user/${user.id}` : '/' // Профиль в корне
     },
   ];
 
@@ -46,7 +48,18 @@ const TabBar = () => {
     if (pathname.includes('/forums')) return 'chat';
     if (pathname.includes('/search')) return 'search';
     if (pathname === '/new-post' || pathname.includes('/new-post')) return 'add';
-    if (pathname === '/user' || pathname.includes('/user')) return 'profile';
+    if (pathname.includes('/user/')) {
+      // Извлекаем ID из строки пути 
+      const pathParts = pathname.split('/');
+      const profileIdInPath = pathParts[pathParts.indexOf('user') + 1];
+      
+      // Сравниваем ID в пути с ID текущего юзера
+      if (user && user.id?.toString() === profileIdInPath) {
+        return 'profile';
+      }
+      // Если это чужой ID, возвращаем null (иконка не горит)
+      return null;
+    }
     if (pathname.includes('/questionnaire')) return null;
     if (pathname.includes('/questionnaireHistory')) return null;
     if (pathname.includes('/chat/[')) return 'chat';

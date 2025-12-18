@@ -10,15 +10,17 @@ import { GlobalStyles } from '../../constants/theme';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
-// Определяем тип для поста
+// Обновляем тип для поста чтобы соответствовать API
 type PostType = {
   id: number;
   title: string;
   photoUrl: string;
+  fullPhotoUrl?: string;
   userId: number;
   username: string;
   placeName: string;
-  isUrgently: boolean;
+  urgently: boolean; // API возвращает urgently
+  createdAt: string;
   likesCount: number;
   savesCount: number;
   likedByCurrentUser: boolean;
@@ -27,7 +29,6 @@ type PostType = {
 
 export default function HomeScreen() {
   const router = useRouter();
-  // Явно указываем тип данных для posts
   const [posts, setPosts] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,37 +41,62 @@ export default function HomeScreen() {
 
   const fetchPosts = async () => {
     try {
+      console.log('Fetching posts from API...');
       const response = await fetch(`${API_BASE_URL}/posts/all-detailed`);
       const data = await response.json();
-      setPosts(data || []);
+      console.log('API Response:', data);
+      
+      // Преобразуем данные API в нужный формат
+      const formattedPosts: PostType[] = data.map((post: any) => ({
+        id: post.id,
+        title: post.title,
+        photoUrl: post.photoUrl,
+        fullPhotoUrl: post.fullPhotoUrl,
+        userId: post.userId,
+        username: post.username,
+        placeName: post.placeName,
+        urgently: post.urgently, // Обратите внимание: urgently, а не isUrgently
+        createdAt: post.createdAt,
+        likesCount: post.likesCount,
+        savesCount: post.savesCount,
+        likedByCurrentUser: post.likedByCurrentUser,
+        savedByCurrentUser: post.savedByCurrentUser
+      }));
+      
+      console.log('Formatted posts:', formattedPosts);
+      setPosts(formattedPosts);
     } catch (error) {
+      console.error('Error fetching posts:', error);
       console.log('Using fallback data');
+      
       // Простые fallback данные
       const fallbackPosts: PostType[] = [
         {
           id: 1,
           title: "Найдена собака в парке",
-          photoUrl: "https://picsum.photos/400/600",
+          photoUrl: "http://localhost:8080/assets/images/posts/post1.jpg",
           userId: 1,
-          username: "user1",
-          placeName: "Центральный парк",
-          isUrgently: false,
-          likesCount: 24,
-          savesCount: 5,
+          username: "Mary",
+          placeName: "Парк Горького",
+          urgently: false,
+          createdAt: "2025-12-17T14:51:40Z",
+          likesCount: 1,
+          savesCount: 1,
           likedByCurrentUser: false,
           savedByCurrentUser: false
         },
         {
           id: 2,
-          title: "Пропал кот",
-          photoUrl: "https://picsum.photos/400/600",
-          userId: 2,
-          username: "user2",
-          placeName: "Микрорайон Восточный",
-          isUrgently: true,
-          likesCount: 89,
-          savesCount: 12,
-          likedByCurrentUser: true,
+          title: "Нашел щенка возле метро",
+          photoUrl: "http://localhost:8080/assets/images/posts/post2.jpg",
+          userId: 1,
+          username: "Mary",
+          placeName: "Лосиный остров",
+          urgently: false,
+          createdAt: "2025-12-17T14:51:40Z",
+          likesCount: 1,
+          savesCount: 1,
+          likedByCurrentUser: false,
           savedByCurrentUser: false
         }
       ];
@@ -88,6 +114,30 @@ export default function HomeScreen() {
     setRefreshing(true);
     await fetchPosts();
     setRefreshing(false);
+  };
+
+  const handleLikeChanged = (postId: number, isLiked: boolean) => {
+    setPosts(posts.map(post => 
+      post.id === postId 
+        ? { 
+            ...post, 
+            likedByCurrentUser: isLiked,
+            likesCount: isLiked ? post.likesCount + 1 : post.likesCount - 1
+          }
+        : post
+    ));
+  };
+
+  const handleSaveChanged = (postId: number, isSaved: boolean) => {
+    setPosts(posts.map(post => 
+      post.id === postId 
+        ? { 
+            ...post, 
+            savedByCurrentUser: isSaved,
+            savesCount: isSaved ? post.savesCount + 1 : post.savesCount - 1
+          }
+        : post
+    ));
   };
 
   useEffect(() => {
@@ -120,13 +170,48 @@ export default function HomeScreen() {
           />
         }
       >
-        {posts.map(post => (
-          <Post 
-            key={post.id}
-            postData={post}
-            currentUserId={currentUserId}
-          />
-        ))}
+        {posts.length === 0 ? (
+          <View style={styles.noPostsContainer}>
+            <Text style={styles.noPostsText}>Нет постов для отображения</Text>
+          </View>
+        ) : (
+          posts.map(post => (
+            <Post 
+              key={post.id}
+              postData={post}
+              onLikePress={(postId, liked) => {
+                // Обновляем состояние
+                setPosts(posts.map(p => 
+                  p.id === postId 
+                    ? { 
+                        ...p, 
+                        likedByCurrentUser: liked,
+                        likesCount: liked ? p.likesCount + 1 : p.likesCount - 1
+                      }
+                    : p
+                ));
+                
+                // Здесь можно добавить API запрос
+                console.log(`Post ${postId} ${liked ? 'liked' : 'unliked'}`);
+              }}
+              onBookmarkPress={(postId, saved) => {
+                // Обновляем состояние
+                setPosts(posts.map(p => 
+                  p.id === postId 
+                    ? { 
+                        ...p, 
+                        savedByCurrentUser: saved,
+                        savesCount: saved ? p.savesCount + 1 : p.savesCount - 1
+                      }
+                    : p
+                ));
+                
+                // Здесь можно добавить API запрос
+                console.log(`Post ${postId} ${saved ? 'saved' : 'unsaved'}`);
+              }}
+            />
+          ))
+        )}
 
         <View style={styles.questionBlock}>
           <Text style={[GlobalStyles.textSpecial, styles.questiontext]}>
@@ -158,12 +243,20 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingBottom: 52,
+    paddingBottom: 32,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  noPostsContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  noPostsText: {
+    fontSize: 16,
+    color: '#666',
   },
   questionBlock: {
     width: '100%' ,

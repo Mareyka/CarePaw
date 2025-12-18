@@ -25,6 +25,10 @@ const UserRecomend = () => {
 
   const handleUserPress = (userId: string) => {
     console.log('Переход на страницу пользователя:', userId);
+    router.push({
+    pathname: "/user/[id]",
+    params: { id: userId }
+  });
   };
 
   // Функция для определения цвета карточки (чередование)

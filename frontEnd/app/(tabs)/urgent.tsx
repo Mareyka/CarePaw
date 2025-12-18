@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, ActivityIndicator, RefreshControl } from 'react-native';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 import Post from '../../components/Post';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api'; // Замените на ваш IP
+const API_BASE_URL = 'http://localhost:8080/api';
 
-// Тип для поста
+// Обновляем тип для поста
 type PostType = {
   id: number;
   title: string;
   photoUrl: string;
+  fullPhotoUrl?: string;
   userId: number;
   username: string;
   placeName: string;
-  isUrgently: boolean;
+  urgently: boolean;
+  createdAt: string;
   likesCount: number;
   savesCount: number;
   likedByCurrentUser: boolean;
@@ -27,57 +29,55 @@ export default function UrgentScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
-  const currentUserId = 1; // Временно, пока нет авторизации
+  const currentUserId = 1;
 
   const fetchUrgentPosts = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/posts`, {
-        params: { isUrgently: true },
-        headers: { 'X-User-Id': currentUserId.toString() }
-      });
-      // Преобразуем данные в формат PostResponseDTO
-      const urgentPostsData: PostType[] = response.data.map((post: any) => ({
+      console.log('Fetching urgent posts from API...');
+      const response = await fetch(`${API_BASE_URL}/posts/all-detailed`);
+      const data = await response.json();
+      console.log('All posts from API:', data);
+      
+      // Фильтруем только срочные посты
+      const urgentData = data.filter((post: any) => post.urgently === true);
+      console.log('Filtered urgent posts:', urgentData);
+      
+      // Преобразуем данные API в нужный формат
+      const formattedPosts: PostType[] = urgentData.map((post: any) => ({
         id: post.id,
         title: post.title,
         photoUrl: post.photoUrl,
+        fullPhotoUrl: post.fullPhotoUrl,
         userId: post.userId,
-        username: "Пользователь", // Временное значение
+        username: post.username,
         placeName: post.placeName,
-        isUrgently: post.isUrgently,
-        likesCount: 0, // Временное значение
-        savesCount: 0, // Временное значение
-        likedByCurrentUser: false,
-        savedByCurrentUser: false
+        urgently: post.urgently,
+        createdAt: post.createdAt,
+        likesCount: post.likesCount,
+        savesCount: post.savesCount,
+        likedByCurrentUser: post.likedByCurrentUser,
+        savedByCurrentUser: post.savedByCurrentUser
       }));
-      setUrgentPosts(urgentPostsData);
+      
+      console.log('Formatted urgent posts:', formattedPosts);
+      setUrgentPosts(formattedPosts);
     } catch (error) {
       console.error('Error fetching urgent posts:', error);
+      
       // Запасные данные для демонстрации
       const fallbackPosts: PostType[] = [
         {
           id: 1,
           title: "Срочно! Помогите найти пропавшего кота",
-          photoUrl: "https://picsum.photos/400/600",
+          photoUrl: "http://localhost:8080/assets/images/posts/post1.jpg",
           userId: 1,
-          username: "user1",
-          placeName: "Центральный парк",
-          isUrgently: true,
+          username: "Mary",
+          placeName: "Парк Горького",
+          urgently: true,
+          createdAt: "2025-12-17T14:51:40Z",
           likesCount: 124,
           savesCount: 15,
           likedByCurrentUser: false,
-          savedByCurrentUser: false
-        },
-        {
-          id: 2,
-          title: "Нужна срочная помощь с передержкой",
-          photoUrl: "https://picsum.photos/400/600",
-          userId: 2,
-          username: "user2",
-          placeName: "Микрорайон Северный",
-          isUrgently: true,
-          likesCount: 89,
-          savesCount: 7,
-          likedByCurrentUser: true,
           savedByCurrentUser: false
         }
       ];
@@ -151,15 +151,51 @@ export default function UrgentScreen() {
           />
         }
       >
-        {urgentPosts.map(post => (
-          <Post 
-            key={post.id}
-            postData={post}
-            currentUserId={currentUserId}
-            onLikeChanged={handleLikeChanged}
-            onSaveChanged={handleSaveChanged}
-          />
-        ))}
+        {urgentPosts.length === 0 ? (
+          <View style={styles.noPostsContainer}>
+            <Text style={styles.noPostsText}>Нет срочных постов</Text>
+            <Text style={styles.noPostsSubtext}>
+              Все животные в безопасности!
+            </Text>
+          </View>
+        ) : (
+          urgentPosts.map(post => (
+            <Post 
+              key={post.id}
+              postData={post}
+              onLikePress={(postId, liked) => {
+                // Обновляем состояние
+                setUrgentPosts(urgentPosts.map(p => 
+                  p.id === postId 
+                    ? { 
+                        ...p, 
+                        likedByCurrentUser: liked,
+                        likesCount: liked ? p.likesCount + 1 : p.likesCount - 1
+                      }
+                    : p
+                ));
+                
+                // Здесь можно добавить API запрос
+                console.log(`Post ${postId} ${liked ? 'liked' : 'unliked'}`);
+              }}
+              onBookmarkPress={(postId, saved) => {
+                // Обновляем состояние
+                setUrgentPosts(urgentPosts.map(p => 
+                  p.id === postId 
+                    ? { 
+                        ...p, 
+                        savedByCurrentUser: saved,
+                        savesCount: saved ? p.savesCount + 1 : p.savesCount - 1
+                      }
+                    : p
+                ));
+                
+                // Здесь можно добавить API запрос
+                console.log(`Post ${postId} ${saved ? 'saved' : 'unsaved'}`);
+              }}
+            />
+          ))
+        )}
       </ScrollView>
       <TabBar />
     </View>
@@ -179,5 +215,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  noPostsContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  noPostsText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4E5B3F',
+    marginBottom: 8,
+  },
+  noPostsSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });

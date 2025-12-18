@@ -29,7 +29,7 @@ public class RootController {
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<User> users = userService.getAllUsers();
 
-        // ИСПРАВЛЕНО: используем новый конструктор со всеми полями
+
         List<UserResponse> userResponses = users.stream()
                 .map(user -> new UserResponse(
                         user.getId(),
@@ -43,5 +43,21 @@ public class RootController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(userResponses);
+    }
+
+
+    @GetMapping("/users/{id}")
+    public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
+        return userService.getUserById(id)
+                .map(user -> ResponseEntity.ok(new UserResponse(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        user.getRole(),
+                        user.getDescription(),
+                        user.getPhoto(),
+                        user.getCreatedAt()
+                )))
+                .orElse(ResponseEntity.notFound().build());
     }
 }

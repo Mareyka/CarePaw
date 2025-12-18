@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Image, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { GlobalStyles } from '../constants/theme';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg'; 
 
 // Иконка лайка 
 const LikeIcon = ({ filled = false }: { filled?: boolean }) => (
@@ -36,149 +35,145 @@ const BookmarkIcon = ({ filled = false }: { filled?: boolean }) => (
   </Svg>
 );
 
-// Типы для пропсов
-interface PostProps {
-  // Вариант 1: Простые пропсы
-  imageUrl?: string;
-  likesCount?: number;
-  commentsCount?: number;
-  repostsCount?: number;
-  description?: string;
-  isLiked?: boolean;
-  isBookmarked?: boolean;
-  onLikePress?: () => void;
-  onCommentPress?: () => void;
-  onRepostPress?: () => void;
-  onBookmarkPress?: () => void;
+// Дефолтное изображение для аватарки
+const DEFAULT_AVATAR = 'https://via.placeholder.com/24';
+
+// Типы
+interface PostData {
+  id: number;
+  title?: string;
+  photoUrl?: string;
+  fullPhotoUrl?: string;
+  userId?: number;
   username?: string;
-  userImage?: string;
-  
-  // Вариант 2: Полные данные поста (для совместимости)
-  postData?: {
-    id: number;
-    title: string;
-    photoUrl: string;
-    userId: number;
-    username: string;
-    placeName?: string;
-    isUrgently: boolean;
-    likesCount: number;
-    savesCount: number;
-    likedByCurrentUser: boolean;
-    savedByCurrentUser: boolean;
-  };
-  
-  currentUserId?: number;
-  onLikeChanged?: (postId: number, isLiked: boolean) => void;
-  onSaveChanged?: (postId: number, isSaved: boolean) => void;
+  placeName?: string;
+  urgently?: boolean;
+  createdAt?: string;
+  likesCount?: number;
+  savesCount?: number;
+  likedByCurrentUser?: boolean;
+  savedByCurrentUser?: boolean;
 }
 
-const Post = ({ 
-  // Простые пропсы
-  imageUrl: propImageUrl, 
-  likesCount: propLikesCount = 0,
-  commentsCount = 0,
-  repostsCount = 0,
-  description: propDescription = "Описание поста будет здесь...",
-  isLiked: propIsLiked = false,
-  isBookmarked: propIsBookmarked = false,
-  onLikePress: propOnLikePress,
-  onBookmarkPress: propOnBookmarkPress,
-  username: propUsername = "_.username._",
-  userImage,
-  
-  // Данные поста
-  postData,
-  currentUserId,
-  onLikeChanged,
-  onSaveChanged
-}: PostProps) => {
-  // Определяем, используем ли мы postData или простые пропсы
-  const usePostData = !!postData;
-  
-  // Если есть postData, используем его
-  const imageUrl = usePostData ? postData.photoUrl : propImageUrl;
-  const username = usePostData ? postData.username : propUsername;
-  const description = usePostData ? postData.title : propDescription;
-  const baseLikesCount = usePostData ? postData.likesCount : propLikesCount;
-  const baseIsLiked = usePostData ? postData.likedByCurrentUser : propIsLiked;
-  const baseIsBookmarked = usePostData ? postData.savedByCurrentUser : propIsBookmarked;
-  
-  // Локальное состояние
-  const [liked, setLiked] = useState(baseIsLiked);
-  const [bookmarked, setBookmarked] = useState(baseIsBookmarked);
-  const [currentLikesCount, setCurrentLikesCount] = useState(baseLikesCount);
+interface PostProps {
+  postData?: PostData;
+  onLikePress?: (postId: number, liked: boolean) => void;
+  onBookmarkPress?: (postId: number, saved: boolean) => void;
+}
 
-  const handleLikePress = () => {
-    const newLikedState = !liked;
-    setLiked(newLikedState);
-    setCurrentLikesCount(newLikedState ? currentLikesCount + 1 : currentLikesCount - 1);
-    
-    // Если есть postData и колбэки
-    if (usePostData && onLikeChanged) {
-      onLikeChanged(postData.id, newLikedState);
-    }
-    
-    // Если есть простой колбэк
-    if (propOnLikePress) {
-      propOnLikePress();
-    }
-  };
+const Post = ({ postData, onLikePress, onBookmarkPress }: PostProps) => {
+  const [liked, setLiked] = useState(postData?.likedByCurrentUser || false);
+  const [likesCount, setLikesCount] = useState(postData?.likesCount || 0);
+  const [saved, setSaved] = useState(postData?.savedByCurrentUser || false);
 
-  const handleBookmarkPress = () => {
-    const newBookmarkedState = !bookmarked;
-    setBookmarked(newBookmarkedState);
-    
-    // Если есть postData и колбэки
-    if (usePostData && onSaveChanged) {
-      onSaveChanged(postData.id, newBookmarkedState);
+  useEffect(() => {
+    if (postData) {
+      setLiked(postData.likedByCurrentUser || false);
+      setLikesCount(postData.likesCount || 0);
+      setSaved(postData.savedByCurrentUser || false);
     }
-    
-    // Если есть простой колбэк
-    if (propOnBookmarkPress) {
-      propOnBookmarkPress();
-    }
-  };
+  }, [postData]);
 
-  // Если нет URL изображения, не рендерим пост
-  if (!imageUrl) {
+  // Формирование URL изображения
+  const getImageUrl = () => {
+    if (!postData) return null;
+    
+    // Используем то, что приходит с сервера
+    if (postData.fullPhotoUrl) {
+      return postData.fullPhotoUrl;
+    }
+    
+    if (postData.photoUrl) {
+      return postData.photoUrl;
+    }
+    
     return null;
+  };
+
+  const imageUrl = getImageUrl();
+
+  // Обработчик нажатия на лайк
+  const handleLikePress = () => {
+    if (!postData) return;
+    
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikesCount(newLiked ? likesCount + 1 : Math.max(0, likesCount - 1));
+    
+    if (onLikePress) {
+      onLikePress(postData.id, newLiked);
+    }
+  };
+
+  // Обработчик нажатия на сохранение
+  const handleBookmarkPress = () => {
+    if (!postData) return;
+    
+    const newSaved = !saved;
+    setSaved(newSaved);
+    
+    if (onBookmarkPress) {
+      onBookmarkPress(postData.id, newSaved);
+    }
+  };
+
+  // Если нет поста
+  if (!postData) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Не удалось загрузить пост</Text>
+      </View>
+    );
   }
+
+  const username = postData.username || '_.username._';
+  const description = postData.title || 'Описание поста будет здесь...';
 
   return (
     <View style={styles.container}>
       {/* Шапка поста с пользователем */}
       <View style={styles.actionsContainer}>
         <View style={styles.leftActions}>
-          {userImage && (
-            <Image 
-              source={{ uri: userImage }} 
-              style={styles.userimg}
-              resizeMode="cover"
-            />
+          <Image 
+            source={{ uri: DEFAULT_AVATAR }} 
+            style={styles.userimg}
+            resizeMode="cover"
+          />
+          <Text style={styles.usernameText}>{username}</Text>
+          {postData.urgently && (
+            <View style={styles.urgentBadge}>
+              <Text style={styles.urgentText}>Срочно</Text>
+            </View>
           )}
-          <Text style={[GlobalStyles.textSpecial]}>{username}</Text>
         </View>
       </View>
 
       {/* Изображение поста */}
-      <Image 
-        source={{ uri: imageUrl }} 
-        style={styles.image}
-        resizeMode="cover"
-      />
+      {imageUrl && (
+        <Image 
+          source={{ uri: imageUrl }} 
+          style={styles.image}
+          resizeMode="cover"
+        />
+      )}
 
       {/* Действия (лайки, закладки) */}
       <View style={styles.actionsContainer}>
         <View style={styles.leftActions}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleLikePress}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={handleLikePress}
+          >
             <LikeIcon filled={liked} />
-            <Text style={GlobalStyles.textSpecial}>{currentLikesCount}</Text>
+            <Text style={styles.actionCount}>{likesCount}</Text>
           </TouchableOpacity>
         </View>
         
-        <TouchableOpacity onPress={handleBookmarkPress} style={styles.leftActions}>
-          <BookmarkIcon filled={bookmarked} />
+        <TouchableOpacity 
+          onPress={handleBookmarkPress} 
+          style={styles.bookmarkButton}
+        >
+          <BookmarkIcon filled={saved} />
         </TouchableOpacity>
       </View>
 
@@ -187,8 +182,8 @@ const Post = ({
         <Text style={styles.descriptionText}>
           {description}
         </Text>
-        {usePostData && postData.placeName && (
-          <Text style={styles.placeText}>📍 {postData.placeName}</Text>
+        {postData.placeName && (
+          <Text style={styles.locationText}>📍 {postData.placeName}</Text>
         )}
       </View>
     </View>
@@ -230,6 +225,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  bookmarkButton: {
+    padding: 4,
+  },
+  usernameText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4E5B3F',
+  },
+  actionCount: {
+    fontSize: 14,
+    color: '#4E5B3F',
+    fontWeight: '500',
+  },
   descriptionContainer: {
     paddingHorizontal: 12,
     paddingBottom: 12,
@@ -238,11 +246,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     lineHeight: 18,
+    marginBottom: 4,
   },
-  placeText: {
+  locationText: {
     fontSize: 12,
     color: '#666',
-    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  urgentBadge: {
+    backgroundColor: '#FFEBEE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  urgentText: {
+    fontSize: 12,
+    color: '#D32F2F',
+    fontWeight: '600',
+  },
+  errorText: {
+    color: '#721c24',
+    fontSize: 14,
+    padding: 16,
+    textAlign: 'center',
   },
 });
 

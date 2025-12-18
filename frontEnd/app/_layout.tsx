@@ -1,24 +1,19 @@
+// app/_layout.tsx
 import { theme } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRalewayFonts } from "@/hooks/useRalewayFonts";
 import { useFonts } from 'expo-font';
-import {
-  DefaultTheme,
-  ThemeProvider
-} from "@react-navigation/native";
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
-import "react-native-reanimated";
-
+import { AuthProvider } from '../contexts/AuthContext';
+import AuthGuard from '../components/auth/AuthGuard';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const { areFontsLoaded, errorFontsLoaded } = useRalewayFonts();
-  // Добавлено: загрузка inglobal.ttf
   const [fontsLoaded] = useFonts({
     inglobal: require('@/assets/font/inglobal.ttf')
   });
@@ -37,56 +32,40 @@ export default function RootLayout() {
   return (
     <View style={styles.rootContainer}>
       <ThemeProvider value={DefaultTheme}>
-        <Stack
-          initialRouteName="(tabs)" // Начинаем сразу с вкладок
-          screenOptions={{
-            contentStyle: { backgroundColor: theme.color.appBackground },
-          }}
-          layout={(props) => <View style={styles.container} {...props} />}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          {/* Экран создания нового поста в корне */}
-          <Stack.Screen name="new-post" options={{ headerShown: false }} />
-          {/* Другие экраны в корне */}
-          <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
-          <Stack.Screen 
-            name="index" 
-            options={{ 
-              headerShown: false,
-              title: 'Авторизация'
-            }} 
-          />
-          <Stack.Screen 
-            name="registration" 
-            options={{ 
-              headerShown: false,
-              title: 'Регистрация'
-            }} 
-          />
-          <Stack.Screen 
-            name="clinic" 
-            options={{ 
-              headerShown: false,
-              title: 'Клиника'
-            }} 
-          />
-          <Stack.Screen 
-            name="user" 
-            options={{ 
-              headerShown: false,
-              title: 'UserProfile'
-            }} 
-          />
-          <Stack.Screen 
-            name="pet-passport" 
-            options={{
-              presentation: 'transparentModal',
-              animation: 'fade', 
-              headerShown: false,
-          }} 
-/>
+        <AuthProvider>
+          <AuthGuard>
+            <Stack
+              screenOptions={{
+                contentStyle: { backgroundColor: theme.color.appBackground },
+                headerShown: false,
+              }}
+              layout={(props) => <View style={styles.container} {...props} />}
+            >
+              {/* Публичные маршруты */}
+              <Stack.Screen name="index" />              // Главная/логин
+              <Stack.Screen name="registration" />       // Регистрация
+              
+              {/* Защищенные маршруты */}
+              <Stack.Screen name="(tabs)" />             // Основное приложение
+              <Stack.Screen name="clinic" />             // Клиника
+              <Stack.Screen name="user/[id]" />          // Профиль по id
+              <Stack.Screen name="new-post" />           // Новый пост
+              <Stack.Screen name="chat/[id]" />          // Чат
 
-        </Stack>
+              
+              
+              {/* Модальные окна */}
+              <Stack.Screen 
+                name="pet-passport" 
+                options={{
+                  presentation: 'transparentModal',
+                  animation: 'fade', 
+                  headerShown: false,
+                }} 
+              />
+            </Stack>
+          </AuthGuard>
+        </AuthProvider>
         <StatusBar style="auto" />
       </ThemeProvider>
     </View>

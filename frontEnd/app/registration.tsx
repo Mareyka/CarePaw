@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -20,6 +21,7 @@ export default function RegistrationScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [description, setDescription] = useState(''); // Опциональное поле
   const [loading, setLoading] = useState(false);
+  const { register } = useAuth();
   const [errors, setErrors] = useState<{
     username?: string;
     email?: string;
@@ -81,6 +83,12 @@ export default function RegistrationScreen() {
         password: password,
         description: description.trim() || undefined
       };
+
+      await register({
+        username: username.trim(),
+        email: email.trim(),
+        password: password
+      });
       
       const userData = await apiService.register(registerData);
 
@@ -96,7 +104,7 @@ export default function RegistrationScreen() {
         setDescription('');
         
         // Переходим на главную страницу или страницу логина
-        router.push('/clinic'); 
+        router.replace('/clinic'); 
       }
     } catch (error: any) {
       console.error('Ошибка при регистрации:', error);
