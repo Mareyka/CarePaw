@@ -17,13 +17,9 @@ import {
 import Button from '../components/Button';
 import PostCard from '../components/ui/PostCard';
 
-interface ClinicProps{
-    onSubmit: () => void;
-    loading?: boolean;
-}
 
-export default function Clinic({onSubmit,
-  loading = false}:ClinicProps){
+
+export default function Clinic(){
 
     const router = useRouter();
     const [averageRating, setAverageRating] = useState(4.3);
@@ -110,8 +106,8 @@ export default function Clinic({onSubmit,
               
                 <Button
                   title="Записаться"
-                  onPress={onSubmit}
-                  loading={loading}
+                  onPress={() => console.log('Нажата кнопка: Записаться')}
+                  loading={false}
                 />
               
             </View>

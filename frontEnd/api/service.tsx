@@ -305,6 +305,20 @@ class ApiService {
       return false;
     }
   }
+
+  async getUserById(id: number | string): Promise<UserResponse | null> {
+  try {
+    const response = await fetch(`${API_URL}/users/${id}`);
+    if (response.ok) {
+      const userData = await response.json();
+      return this.normalizeUserResponse(userData);
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching user by id:', error);
+    return null;
+  }
+}
 }
 
 // Создаем и экспортируем синглтон экземпляр

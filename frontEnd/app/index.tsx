@@ -57,13 +57,20 @@ export default function LoginScreen() {
   
    try {
       await login(identifier, password);
+
+      const userData = apiService.getCurrentUserFromMemory();
       
       // Успешная авторизация
-      console.log('✅ Переход на главную страницу');
-      router.replace('/user'); // replace вместо push, чтобы нельзя было вернуться назад
-      
+      if (userData && userData.id) {
+        console.log('✅ Переход в профиль пользователя ID:', userData.id);
+        // 3. Используем динамический роут
+        router.replace(`/user/${userData.id}` as any);
+      } else {
+      // Фолбэк на случай, если ID почему-то не пришел
+      router.replace('/(tabs)'); 
+    }
     } catch (error: any) {
-      console.error('❌ Ошибка авторизации:', error);
+      console.error('Ошибка авторизации:', error);
       
       if (error.message.includes('Invalid credentials')) {
         setErrors({
