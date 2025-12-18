@@ -5,8 +5,14 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (identifier: string, password: string) => Promise<void>;
-  register: (data: { username: string; email: string; password: string }) => Promise<void>;
+  // Теперь функции возвращают Promise<User>, а не void
+  login: (identifier: string, password: string) => Promise<User>;
+  register: (data: { 
+  username: string; 
+  email: string; 
+  password: string; 
+  description?: string 
+}) => Promise<User>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -33,24 +39,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   });
 
   useEffect(() => {
-    // Подписываемся на изменения состояния
+    // Подписываемся на изменения состояния в authService
     const unsubscribe = authService.subscribe((newState) => {
       setState(newState);
     });
 
-    // Инициализируем auth service
+    // Инициализируем auth service (проверка токена и т.д.)
     authService.initialize();
 
     return unsubscribe;
   }, []);
 
-  const login = async (identifier: string, password: string) => {
-    await authService.login(identifier, password);
+  const login = async (identifier: string, password: string): Promise<User> => {
+    // Добавляем return, чтобы данные "пробрасывались" в RegistrationScreen
+    const userData = await authService.login(identifier, password);
+    return userData;
   };
 
-  const register = async (data: { username: string; email: string; password: string }) => {
-    await authService.register(data);
-  };
+  const register = async (data: { 
+      username: string; 
+      email: string; 
+      password: string; 
+      description?: string 
+    }) => {
+      const userData = await authService.register(data); // Передаем весь объект дальше
+      return userData;
+    };
 
   const logout = () => {
     authService.logout();

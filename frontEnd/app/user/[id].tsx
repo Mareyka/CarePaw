@@ -99,8 +99,10 @@ const handleSubscription = async () => {
     const freshCounts = await apiService.getSubscriptionCounts(id as string);
     setCounts(freshCounts);
 
-  } catch (error) {
-    console.error("Ошибка подписки:", error);
+    
+
+  } catch (error: any) {
+    console.error("Детальная ошибка:", error.response?.data || error.message)
   }
 };
 

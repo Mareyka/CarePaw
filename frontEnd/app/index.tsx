@@ -17,123 +17,80 @@ import TabHeader from '../components/ui/TabHeader';
 import { apiService } from '../api/service';
 
 export default function LoginScreen() {
-  const [identifier, setIdentifier] = useState(''); // может быть username или email
-  const [authError, setAuthError] = useState<string | null>(null);
+ const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{
+    username?: string;
+    password?: string;
+    general?: string;
+  }>({});
   const router = useRouter();
   const { login } = useAuth();
-  const [errors, setErrors] = useState<{
-  username?: string;
-  password?: string;
-  general?: string;
-}>({});
 
 
 
  const handleLogin = async () => {
-  console.log('=== ВЫЗОВ ФУНКЦИИ LOGIN ===');
-  console.log('📝 Введенные данные:', { 
-    identifier, 
-    password: '***' + password.slice(-3) 
-  });
-  
-  // Сброс ошибок
-  setErrors({});
-  setAuthError(null);
-  
-  // Валидация
-  if (!identifier.trim()) {
-    setErrors({ username: 'Введите email или username' });
-    return;
-  }
-  
-  if (!password) {
-    setErrors({ password: 'Введите пароль' });
-    return;
-  }
-
-  setLoading(true);
-  
-   try {
-      await login(identifier, password);
-
-      const userData = apiService.getCurrentUserFromMemory();
-      
-      // Успешная авторизация
-      if (userData && userData.id) {
-        console.log('✅ Переход в профиль пользователя ID:', userData.id);
-        // 3. Используем динамический роут
-        router.replace(`/user/${userData.id}` as any);
-      } else {
-      // Фолбэк на случай, если ID почему-то не пришел
-      router.replace('/(tabs)'); 
+    setErrors({});
+    
+    if (!identifier.trim()) {
+      setErrors({ username: 'Введите email или username' });
+      return;
     }
+    if (!password) {
+      setErrors({ password: 'Введите пароль' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const userData = await login(identifier, password);
+      if (userData && userData.id) {
+        router.replace(`/user/${userData.id}` as any);
+      }
     } catch (error: any) {
-      console.error('Ошибка авторизации:', error);
-      
-      if (error.message.includes('Invalid credentials')) {
-        setErrors({
-          general: 'Неверный логин или пароль'
-        });
+      const msg = error.message || '';
+      // Проверяем и на английском, и на русском (так как ApiService теперь переводит)
+      if (msg.includes('Invalid credentials') || msg.includes('Неверный')) {
+        setErrors({ general: 'Неверный логин или пароль' });
       } else {
-        setErrors({
-          general: error.message || 'Ошибка авторизации'
-        });
+        setErrors({ general: msg || 'Ошибка авторизации' });
       }
     } finally {
       setLoading(false);
     }
   };
 
-  return (
+return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.greenSection}>
         <TabHeader
           tabs={[
-            {
-              label: 'Авторизация',
-              isActive: true,
-              onPress: () => console.log('Переход на авторизацию')
-            },
-            {
-              label: 'Регистрация',
-              isActive: false,
-              onPress: () => {
-                console.log('➡️ Переход на регистрацию');
-                router.push('/registration');
-              }
-            }
+            { label: 'Авторизация', isActive: true, onPress: () => {} },
+            { label: 'Регистрация', isActive: false, onPress: () => router.push('/registration') }
           ]}
         />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        
         <AuthForm
           username={identifier}
           password={password}
-          onUsernameChange={(text) => {
-            console.log('📝 Изменение идентификатора:', text);
-            setIdentifier(text);
-          }}
-          onPasswordChange={(text) => {
-            console.log('🔑 Изменение пароля:', '***' + text.slice(-3));
-            setPassword(text);
-          }}
+          onUsernameChange={setIdentifier}
+          onPasswordChange={setPassword}
           onSubmit={handleLogin}
           loading={loading}
-          
+          errors={errors} // <-- ДОБАВЛЕНО: теперь форма увидит ошибки
         />
-        {authError && (
-        <Text style={styles.errorText}>{authError}</Text>
+        
+        {/* Вывод общей ошибки, если она есть */}
+        {errors.general && (
+          <Text style={styles.errorText}>{errors.general}</Text>
         )}
+
         <TouchableOpacity 
           style={styles.registerContainer}
-          onPress={() => {
-            console.log('➡️ Переход на регистрацию из кнопки');
-            router.push('/registration');
-          }}
+          onPress={() => router.push('/registration')}
         >
           <Text style={styles.registerText}>Нет аккаунта? Зарегистрироваться</Text>
         </TouchableOpacity>
