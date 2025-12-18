@@ -70,8 +70,7 @@ public class PostController {
 
         if (photo != null && !photo.isEmpty()) {
             String fileName = saveFile(photo);
-            String photoUrl = "/uploads/" + fileName;
-            post.setPhotoUrl(photoUrl);
+            post.setPhotoUrl(fileName);
         }
 
         Post saved = postRepository.save(post);
@@ -102,8 +101,7 @@ public class PostController {
 
         if (photo != null && !photo.isEmpty()) {
             String fileName = saveFile(photo);
-            String photoUrl = "/uploads/" + fileName;
-            post.setPhotoUrl(photoUrl);
+            post.setPhotoUrl(fileName);
         }
 
         Post saved = postRepository.save(post);
@@ -292,6 +290,7 @@ public class PostController {
         }
         String newName = UUID.randomUUID() + ext;
 
+        // Сохраняем в папку uploads
         Path uploadPath = Paths.get(System.getProperty("user.dir"), UPLOAD_DIR);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
@@ -300,6 +299,7 @@ public class PostController {
         Path target = uploadPath.resolve(newName);
         file.transferTo(target.toFile());
 
+        // Возвращаем ТОЛЬКО имя файла, не путь
         return newName;
     }
 
@@ -322,6 +322,8 @@ public class PostController {
         dto.setTitle(post.getTitle());
         dto.setPhotoUrl(post.getPhotoUrl());
         dto.setUserId(post.getUserId());
+
+        System.out.println("Setting photoUrl to DTO: " + post.getPhotoUrl());
 
         // Получаем username пользователя
         User author = userRepository.findById(post.getUserId()).orElse(null);
