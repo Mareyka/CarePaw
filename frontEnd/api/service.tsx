@@ -113,6 +113,46 @@ class ApiService {
     }
   }
 
+async updateUser(userId: string, data: { username: string, description: string, photo?: string }) {
+  const formData = new FormData();
+  
+  formData.append("username", data.username);
+  formData.append("description", data.description);
+
+  // ПРОВЕРКА: Если фото есть и это ЛОКАЛЬНЫЙ файл (выбранный в галерее)
+if (data.photo && !data.photo.startsWith('http')) {
+    const localUri = data.photo; 
+
+    // Для веба иногда нужно явно преобразовать URI в Blob, если это blob-ссылка
+    if (localUri.startsWith('blob:') || localUri.startsWith('data:')) {
+        const response = await fetch(localUri);
+        const blob = await response.blob();
+        formData.append("photoFile", blob, `avatar_${userId}.jpg`);
+    } else {
+        // Стандартный способ для мобилок и некоторых браузеров
+        formData.append("photoFile", {
+            uri: localUri, 
+            name: `avatar_${userId}.jpg`,
+            type: 'image/jpeg',
+        } as any);
+    }
+    console.log("📤 Файл добавлен в FormData");
+
+  }
+
+  const response = await fetch(`${API_URL}/users/${userId}`, {
+    method: 'PUT',
+    body: formData,
+    // Headers не ставим, fetch сам разберется с FormData
+  });
+
+  if (!response.ok) {
+     const errorText = await response.text();
+     throw new Error(errorText || "Ошибка при обновлении");
+  }
+  return await response.json();
+}
+
   // Проверка статуса подписки
   async checkSubscription(followingId: string | number): Promise<{ subscribed: boolean }> {
     const followerId = this.currentUser?.id;

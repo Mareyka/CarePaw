@@ -4,9 +4,16 @@ import com.example.animals.model.User;
 import com.example.animals.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 
@@ -59,5 +66,35 @@ public class UserService {
 
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
+    }
+
+    public User save(User user) {
+        return userRepository.save(user);
+    }
+
+    public String saveAvatar(MultipartFile file) throws IOException {
+        // Определяем расширение
+        String originalName = file.getOriginalFilename();
+        String ext = (originalName != null && originalName.contains("."))
+                ? originalName.substring(originalName.lastIndexOf("."))
+                : ".jpg";
+
+        String fileName = UUID.randomUUID().toString() + ext;
+
+        // Путь от корня проекта: uploads/images/profiles
+        Path uploadPath = Paths.get("uploads", "images", "profiles").toAbsolutePath().normalize();
+
+        // Создаем папки, если их нет
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        Path target = uploadPath.resolve(fileName);
+
+        // Копируем поток данных в файл
+        Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+
+        System.out.println("Файл физически сохранен: " + target);
+        return fileName;
     }
 }

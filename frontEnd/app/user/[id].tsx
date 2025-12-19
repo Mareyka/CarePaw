@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
@@ -11,8 +12,11 @@ import {
   Dimensions,
   ActivityIndicator,
   ScrollView,
+   Modal, 
+  TextInput,
   Alert
 } from 'react-native';
+
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService, UserResponse } from '../../api/service';
@@ -26,9 +30,9 @@ import PostThumbnail from '@/components/PostThumbnail';
 
 const API_URL = 'http://localhost:8080/api';
 const { width } = Dimensions.get('window');
-const COLUMN_WIDTH = width / 3; // Вынесли константу, чтобы была доступна везде
+const COLUMN_WIDTH = width / 3; 
 
-// Определяем интерфейс для поста, чтобы уйти от ошибки 'never'
+// Определяем интерфейс для поста
 interface UserPost {
   id: number;
   photoUrl: string;
@@ -45,7 +49,6 @@ export default function UserProfile() {
   const [shelterAnimals, setShelterAnimals] = useState<ShelterAnimal[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Указываем тип <UserPost[]>, чтобы убрать ошибки Property 'id' does not exist on type 'never'
   const [posts, setPosts] = useState<UserPost[]>([]);
 
   const [isAppointmentModalVisible, setIsAppointmentModalVisible] = useState(false);
@@ -56,6 +59,53 @@ export default function UserProfile() {
   const isShelter = profileUser?.role === 'SHELTER';
   const isOwnProfile = currentUser?.id?.toString() === id?.toString();
   const averageRating = 4;
+
+  const pickImage = async () => {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.5,
+  });
+
+  if (!result.canceled) {
+    setEditForm({ ...editForm, photo: result.assets[0].uri });
+  }
+};
+
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editForm, setEditForm] = useState({
+    username: '',
+    description: '',
+    photo: ''
+  });
+
+  useEffect(() => {
+  if (profileUser) {
+    setEditForm({
+      username: profileUser.username || '',
+      description: profileUser.description || '',
+      photo: profileUser.photo || ''
+    });
+  }
+}, [profileUser]);
+
+const handleUpdateProfile = async () => {
+  try {
+    setLoading(true);
+    const updatedUser = await apiService.updateUser(id as string, editForm);
+    
+    // Если запрос прошел успешно:
+    setProfileUser(updatedUser);
+    setIsEditModalVisible(false); // Закрываем только при успехе
+    Alert.alert("Успех", "Профиль обновлен");
+  } catch (error) {
+    console.error("Ошибка сохранения:", error);
+    Alert.alert("Ошибка", "Сервер не принял данные (415). Проверь консоль бэкенда.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const fetchPets = async () => {
     try {
@@ -140,7 +190,7 @@ const fetchTabData = async (tab: TabType) => {
   
   try {
     let url = '';
-    // Определяем URL на основе структуры твоего контроллера
+    // Определяем URL на основе структуры контроллера
     switch (tab) {
       case 'POSTS':
         url = `${API_URL}/posts?userId=${id}`;
@@ -157,7 +207,6 @@ const fetchTabData = async (tab: TabType) => {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        // Твой контроллер ожидает этот заголовок для mapToDetailedResponse
         'X-User-Id': currentUser?.id?.toString() || '',
       },
     });
@@ -211,7 +260,7 @@ const fetchTabData = async (tab: TabType) => {
       <FlatList
         data={posts}
         numColumns={3}
-        keyExtractor={(item) => item.id.toString()} // Теперь 'id' существует
+        keyExtractor={(item) => item.id.toString()} 
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
@@ -232,10 +281,14 @@ const fetchTabData = async (tab: TabType) => {
               {/* 2. АВАТАР И СТАТИСТИКА */}
               <View style={styles.row2}>
                 <View style={styles.avatarColumn}>
-                  <Image 
-                    source={profileUser.photo?.trim() ? { uri: profileUser.photo } : require('@/assets/images/default_avatar.png')} 
-                    style={styles.avatarImage}
-                  />
+                    <Image 
+                      source={
+                        profileUser.photo 
+                          ? { uri: `http://localhost:8080/api/images/avatars/${profileUser.photo}?t=${Date.now()}` } 
+                          : require('@/assets/images/default_avatar.png')
+                      } 
+                      style={styles.avatarImage}
+                    />
                   {(isClinic || isShelter) && (
                     <View style={styles.starsContainer}>
                       {[1, 2, 3, 4, 5].map((num) => (
@@ -261,28 +314,60 @@ const fetchTabData = async (tab: TabType) => {
                 </View>
               </View>
 
-              {/* 3. КНОПКИ ДЕЙСТВИЯ И ОПИСАНИЕ */}
-              <View style={styles.row3}>
-                <View style={styles.actionButtonsContainer}>
-                  {!isOwnProfile ? (
-                    isClinic ? (
-                      <Button title="Записаться" onPress={() => setIsAppointmentModalVisible(true)} />
-                    ) : (
+             
+            {/* 3. КНОПКИ ДЕЙСТВИЯ И ОПИСАНИЕ */}
+            <View style={styles.row3}>
+              <View style={styles.actionButtonsContainer}>
+                {!isOwnProfile ? (
+                  <View style={{ flexDirection: 'column', gap: 10, width: '100%' }}> 
+                    {isClinic ? (
+                      // Если это КЛИНИКА — только кнопка записи
+                      <Button 
+                        title="Записаться" 
+                        onPress={() => setIsAppointmentModalVisible(true)} 
+                        style={{ flex: 1 }} 
+                      />
+                    ) : profileUser.role === 'SHELTER' ? (
+                      // Если это ПРИЮТ — только кнопка подписки (без "Написать")
                       <Button 
                         title={isSubscribed ? "Вы подписаны" : "Подписаться"} 
                         onPress={handleSubscription} 
                         variant={isSubscribed ? "outline" : "primary"} 
+                        style={{ flex: 1 }} 
                       />
-                    )
-                  ) : (
-                    <Button title="Настройки" onPress={() => router.push('/settings')} variant="outline" />
-                  )}
-                </View>
-
-                <View style={styles.descriptionContainer}>
-                  <Text style={styles.descriptionText}>{profileUser.description || "Информация отсутствует"}</Text>
-                </View>
+                    ) : (
+                      // Если это ОБЫЧНЫЙ ЮЗЕР — и подписка, и "Написать"
+                      <>
+                        <Button 
+                          title={isSubscribed ? "Вы подписаны" : "Подписаться"} 
+                          onPress={handleSubscription} 
+                          variant={isSubscribed ? "outline" : "primary"} 
+                          style={{ flex: 1 }} 
+                        />
+                        <Button 
+                          title="Написать" 
+                          onPress={() => {/* навигация в чат */}} 
+                          variant="outline"
+                          style={{ flex: 1 }} 
+                        />
+                      </>
+                    )}
+                  </View>
+                ) : (
+                  <Button 
+                    title="Изменить" 
+                    onPress={() => setIsEditModalVisible(true)} 
+                    variant="outline" 
+                  />
+                )}
               </View>
+
+              <View style={styles.descriptionContainer}>
+                <Text style={styles.descriptionText}>
+                  {profileUser.description || "Информация отсутствует"}
+                </Text>
+              </View>
+            </View>
 
               {/* 4. КОНТАКТЫ */}
               {(isClinic || isShelter) && (
@@ -417,7 +502,56 @@ const fetchTabData = async (tab: TabType) => {
           visible={isAppointmentModalVisible} 
           onClose={() => setIsAppointmentModalVisible(false)} 
       />
+      
       <TabBar />
+      <Modal
+  visible={isEditModalVisible}
+  animationType="slide"
+  transparent={true}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContent}>
+      <Text style={styles.modalTitle}>Редактировать профиль</Text>
+      
+      <Text style={styles.inputLabel}>Имя пользователя</Text>
+      <TextInput
+        style={styles.input}
+        value={editForm.username}
+        onChangeText={(text) => setEditForm({...editForm, username: text})}
+      />
+
+      <Text style={styles.inputLabel}>О себе</Text>
+      <TextInput
+        style={[styles.input, { height: 80 }]}
+        multiline
+        value={editForm.description}
+        onChangeText={(text) => setEditForm({...editForm, description: text})}
+      />
+
+      <Text style={styles.inputLabel}>URL фото</Text>
+      <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
+        <Text>Выбрать фото из галереи</Text>
+      </TouchableOpacity>
+      {editForm.photo && <Image source={{ uri: editForm.photo }} style={styles.previewImage} />}
+
+      <View style={styles.modalButtons}>
+        <TouchableOpacity 
+          style={[styles.modalButton, { backgroundColor: '#ccc' }]} 
+          onPress={() => setIsEditModalVisible(false)}
+        >
+          <Text>Отмена</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.modalButton, { backgroundColor: '#697c44' }]} 
+          onPress={handleUpdateProfile}
+        >
+          <Text style={{ color: '#fff' }}>Сохранить</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
     </SafeAreaView>
   );
 }
@@ -500,7 +634,7 @@ const styles = StyleSheet.create({
   },
   row3: {
     flexDirection: 'row',
-    alignItems: 'flex-start', // Чтобы кнопка не тянулась по высоте текста
+    alignItems: 'flex-start', 
     marginVertical: 15,
   },
   actionButtonsContainer: {
@@ -588,6 +722,7 @@ const styles = StyleSheet.create({
   listContent: {
     backgroundColor: '#ECE1D1',
     flexGrow: 1,
+    paddingBottom: 80,
   },
   headerSpacer: {
     padding: 15,
@@ -600,8 +735,8 @@ const styles = StyleSheet.create({
   },
   thumbnailContainer: {
     width: COLUMN_WIDTH,
-    height: COLUMN_WIDTH, // Делаем квадратным
-    padding: 1, // Тонкая граница между фото
+    height: COLUMN_WIDTH, 
+    padding: 1, 
   },
   thumbnailImage: {
     flex: 1,
@@ -614,5 +749,74 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#4E5B3F',
     opacity: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    backgroundColor: '#ECE1D1',
+    borderRadius: 20,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4E5B3F',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: '#4E5B3F',
+    marginBottom: 5,
+    marginTop: 10,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#D0C7BA',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 0.45,
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  imagePickerButton: {
+    backgroundColor: '#D0C7BA',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: '#4E5B3F',
+    borderStyle: 'dashed',
+  },
+  imagePickerText: {
+    color: '#4E5B3F',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  previewImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignSelf: 'center',
+    marginTop: 10,
+    borderWidth: 2,
+    borderColor: '#697c44',
   },
 });
