@@ -27,6 +27,7 @@ import {
 export default function PetPassport() {
   const router = useRouter();
   const { user: currentUser } = useAuth();
+  const isShelterViewer = currentUser?.role?.toUpperCase() === 'SHELTER';
 
   const goBackSafe = () => {
     if (router.canGoBack()) router.back();
@@ -273,12 +274,14 @@ export default function PetPassport() {
               <Text style={styles.infoText}>Глистогонные: {pet?.dewormed ? '✅ Да' : '❌ Нет'}</Text>
             </View>
 
-            <PrimaryButton
-              title="Календарь"
-              onPress={() => router.push({ pathname: '/pet-calendar', params: { petId: pet?.id } })}
-              style={{ marginTop: 14 }}
-              textStyle={{ fontSize: 19 }}
-            />
+            {!isShelterViewer && (
+              <PrimaryButton
+                title="Календарь"
+                onPress={() => router.push({ pathname: '/pet-calendar', params: { petId: pet?.id } })}
+                style={{ marginTop: 14 }}
+                textStyle={{ fontSize: 19 }}
+              />
+            )}
           </>
         )}
       </View>
