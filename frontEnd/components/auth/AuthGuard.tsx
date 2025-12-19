@@ -11,27 +11,24 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   // Определяем текущий корневой сегмент
   const rootSegment = segments[0];
   
-  // Мы на публичной странице, если сегмента нет (корень '/') 
-  // или если сегмент равен 'registration'
+  // Мы на публичной странице, если сегмента нет или если сегмент равен 'registration'
   const isAuthPage = !rootSegment || rootSegment === 'registration';
 
   useEffect(() => {
-    // Ждем окончания загрузки (проверки сессии), прежде чем редиректить
     if (isLoading) return;
 
     if (!isAuthenticated && !isAuthPage) {
-      // 1. Пытаемся зайти на защищенный роут без авторизации
-      console.log('🚫 Доступ запрещен: редирект на Login');
+      // Пытаемся зайти на защищенный роут без авторизации
+      console.log('Доступ запрещен: редирект на Login');
       router.replace('/');
     } else if (isAuthenticated && isAuthPage) {
-      // 2. Мы уже авторизованы, но зашли на Login или Registration
-      console.log('✅ Авторизован: переход в основное приложение');
+      // Мы уже авторизованы, но зашли на Login или Registration
+      console.log('Авторизован: переход в основное приложение');
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, isLoading, rootSegment]);
 
   // Если идет загрузка сессии, показываем экран ожидания
-  // НО не показываем его на страницах логина/регистрации, чтобы не мешать вводу
   if (isLoading && !isAuthPage) {
     return (
       <View style={styles.loadingContainer}>

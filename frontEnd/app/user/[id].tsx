@@ -487,7 +487,7 @@ const fetchTabData = async (tab: TabType) => {
         renderItem={({ item }) => (
           <PostThumbnail 
             photoUrl={item.photoUrl} 
-            onPress={() => console.log('Клик по посту', item.id)} // Просто лог
+            onPress={() => console.log('Клик по посту', item.id)} 
           />
         )}
         ListEmptyComponent={

@@ -80,7 +80,7 @@ return (
           onPasswordChange={setPassword}
           onSubmit={handleLogin}
           loading={loading}
-          errors={errors} // <-- ДОБАВЛЕНО: теперь форма увидит ошибки
+          errors={errors} 
         />
         
         {/* Вывод общей ошибки, если она есть */}

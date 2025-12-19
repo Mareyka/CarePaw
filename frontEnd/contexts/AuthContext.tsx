@@ -5,7 +5,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  // Теперь функции возвращают Promise<User>, а не void
+
   login: (identifier: string, password: string) => Promise<User>;
   register: (data: { 
   username: string; 
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setState(newState);
     });
 
-    // Инициализируем auth service (проверка токена и т.д.)
+    // Инициализируем auth service 
     authService.initialize();
 
     return unsubscribe;
