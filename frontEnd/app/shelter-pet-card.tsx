@@ -27,7 +27,7 @@ export default function ShelterPetCard() {
   const { user: currentUser } = useAuth();
   const { animalId, mode } = useLocalSearchParams<{ animalId?: string; mode?: string }>();
 
-  const isCreateMode = !animalId || mode === 'create';
+  const isCreateMode = mode === 'create';
   const isShelterOwner = currentUser?.role === 'SHELTER';
 
   const goBackSafe = () => {
@@ -61,6 +61,7 @@ export default function ShelterPetCard() {
 
   useEffect(() => {
     if (isCreateMode) return;
+    if (!animalId) return;
     (async () => {
       try {
         setLoading(true);
@@ -108,6 +109,17 @@ export default function ShelterPetCard() {
       setIsSaving(false);
     }
   };
+
+  if (!isCreateMode && !animalId) {
+    return (
+      <View style={styles.backdrop}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Животное не найдено</Text>
+          <PrimaryButton title="Назад" onPress={goBackSafe} style={{ marginTop: 12 }} />
+        </View>
+      </View>
+    );
+  }
 
   if (loading) {
     return (
