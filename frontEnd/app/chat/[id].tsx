@@ -11,25 +11,27 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage, ChatTimestamp } from "@/components/chat-message";
-import { ChatMessage as ChatMessageType } from "@/types/chat";
+import { ChatMessage as ChatMessageType } from "@/types/ChatMessage";
 import { theme } from "@/constants/theme";
 import { useChat } from "@/hooks/useChat";
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { messages, chatName, isLoading, sendMessage } = useChat(id);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList<ChatMessageType>>(null);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (messages.length > 0 && !isLoading) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-      }, 100);
+      setTimeout(
+        () => flatListRef.current?.scrollToEnd({ animated: false }),
+        100
+      );
     }
   }, [messages.length, isLoading]);
 
   const handleSendMessage = (text: string) => {
+    if (!text.trim()) return;
     sendMessage(text);
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
@@ -37,16 +39,18 @@ export default function ChatScreen() {
   };
 
   const renderMessage = ({ item, index }: { item: ChatMessageType; index: number }) => {
-    const timeDiff = index > 0
-      ? new Date(item.timestamp).getTime() -
-        new Date(messages[index - 1].timestamp).getTime()
-      : Infinity;
-    
-    const showTimestamp = timeDiff > 1 * 60 * 1000;
+    const thisTime = item?.timestamp ? new Date(item.timestamp).getTime() : 0;
+    const prevTime =
+      index > 0 && messages[index - 1]?.timestamp
+        ? new Date(messages[index - 1].timestamp).getTime()
+        : 0;
+
+    const timeDiff = Math.abs(thisTime - prevTime);
+    const showTimestamp = index === 0 || timeDiff > 1 * 60 * 1000; // >1 мин
 
     return (
       <>
-        {showTimestamp && <ChatTimestamp timestamp={item.timestamp} />}
+        {showTimestamp && <ChatTimestamp timestamp={item?.timestamp} />}
         <ChatMessage message={item} />
       </>
     );
@@ -60,7 +64,9 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 56 + 16 : 0}
+        keyboardVerticalOffset={
+          Platform.OS === "ios" ? insets.top + 56 + 16 : 0
+        }
       >
         {isLoading ? (
           <View style={styles.loadingContainer} />
@@ -69,18 +75,19 @@ export default function ChatScreen() {
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) =>
+              item?.messageId ? item.messageId.toString() : `temp-${index}`
+            }
             contentContainerStyle={styles.messagesList}
             inverted={false}
             keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => {
-              flatListRef.current?.scrollToEnd({ animated: false });
-            }}
-            onLayout={() => {
-              if (messages.length > 0) {
-                flatListRef.current?.scrollToEnd({ animated: false });
-              }
-            }}
+            onContentSizeChange={() =>
+              flatListRef.current?.scrollToEnd({ animated: false })
+            }
+            onLayout={() =>
+              messages.length &&
+              flatListRef.current?.scrollToEnd({ animated: false })
+            }
           />
         )}
         <ChatInput onSend={handleSendMessage} />
@@ -103,4 +110,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-

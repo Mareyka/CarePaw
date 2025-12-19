@@ -2,8 +2,10 @@ package com.example.animals.service;
 
 import com.example.animals.model.Chat;
 import com.example.animals.model.Message;
+import com.example.animals.model.User;
 import com.example.animals.repository.ChatRepository;
 import com.example.animals.repository.MessageRepository;
+import com.example.animals.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +17,14 @@ public class ChatService {
 
     private final ChatRepository chatRepository;
     private final MessageRepository messageRepository;
+    private final UserRepository userRepository;
 
-    public ChatService(ChatRepository chatRepository, MessageRepository messageRepository) {
+    public ChatService(ChatRepository chatRepository,
+                       MessageRepository messageRepository,
+                       UserRepository userRepository) {
         this.chatRepository = chatRepository;
         this.messageRepository = messageRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -55,6 +61,30 @@ public class ChatService {
                 .map(messageRepository::findByChatOrderByCreatedAtAsc)
                 .orElseGet(List::of);
     }
+
+    @Transactional(readOnly = true)
+    public List<Chat> getChatsForUser(Long userId) {
+        return chatRepository.findByUser1IdOrUser2Id(userId, userId);
+    }
+
+    @Transactional(readOnly = true)
+    public Message getLastMessage(Long chatId) {
+        var result = messageRepository.findTopByChatIdOrderByCreatedAtDesc(chatId);
+        if(result != null) {
+            return result;
+        }
+        return null;
+    }
+
+    @Transactional(readOnly = true)
+    public User getCompanion(Chat chat, Long currentUserId) {
+        if (chat == null || currentUserId == null) return null;
+
+        Long companionId =
+                chat.getUser1Id().equals(currentUserId)
+                        ? chat.getUser2Id()
+                        : chat.getUser1Id();
+
+        return userRepository.findById(companionId).orElse(null);
+    }
 }
-
-

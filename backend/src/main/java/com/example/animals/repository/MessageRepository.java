@@ -9,6 +9,7 @@ import java.util.List;
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
     List<Message> findByChatOrderByCreatedAtAsc(Chat chat);
+    Message findTopByChatIdOrderByCreatedAtDesc(Long chat_id);
 
 }
 

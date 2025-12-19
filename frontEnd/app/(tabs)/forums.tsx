@@ -60,7 +60,7 @@ export default function ForumsOrChatsScreen() {
                     title={chat.title}
                     lastMessage={chat.lastMessage}
                     avatarUri={chat.avatarUri}
-                    onPress={() => handleForumPress(chat.id)}
+                    onPress={() => handleForumPress(chat.recipientId.toString())}
                   />
                 ))}
           </View>

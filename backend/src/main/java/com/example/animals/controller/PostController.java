@@ -159,7 +159,6 @@ public class PostController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        // Проверяем, не лайкнул ли уже пользователь
         if (postLikeRepository.existsByPostIdAndUserId(postId, userId)) {
             return ResponseEntity.badRequest().build();
         }
@@ -207,7 +206,6 @@ public class PostController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        // Проверяем, не сохранил ли уже пользователь
         if (postSaveRepository.existsByPostIdAndUserId(postId, userId)) {
             return ResponseEntity.badRequest().build();
         }
@@ -277,8 +275,6 @@ public class PostController {
         return ResponseEntity.ok(list);
     }
 
-    // === Вспомогательные методы ===
-
     private String saveFile(MultipartFile file) throws IOException {
         String originalName = file.getOriginalFilename();
         String ext = "";
@@ -287,7 +283,6 @@ public class PostController {
         }
         String newName = UUID.randomUUID() + ext;
 
-        // Сохраняем в папку uploads
         Path uploadPath = Paths.get(System.getProperty("user.dir"), UPLOAD_DIR);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
@@ -296,7 +291,6 @@ public class PostController {
         Path target = uploadPath.resolve(newName);
         file.transferTo(target.toFile());
 
-        // Возвращаем ТОЛЬКО имя файла, не путь
         return newName;
     }
 
@@ -322,7 +316,6 @@ public class PostController {
 
         System.out.println("Setting photoUrl to DTO: " + post.getPhotoUrl());
 
-        // Получаем username пользователя
         User author = userRepository.findById(post.getUserId()).orElse(null);
         dto.setUsername(author != null ? author.getUsername() : "Unknown");
 
@@ -330,11 +323,9 @@ public class PostController {
         dto.setUrgently(post.isUrgently());
         dto.setCreatedAt(post.getCreatedAt());
 
-        // Получаем количество лайков и сохранений
         dto.setLikesCount(postLikeRepository.countByPostId(post.getId()));
         dto.setSavesCount(postSaveRepository.countByPostId(post.getId()));
 
-        // Проверяем, лайкнул/сохранил ли текущий пользователь
         if (currentUserId != null) {
             dto.setLikedByCurrentUser(postLikeRepository.existsByPostIdAndUserId(post.getId(), currentUserId));
             dto.setSavedByCurrentUser(postSaveRepository.existsByPostIdAndUserId(post.getId(), currentUserId));

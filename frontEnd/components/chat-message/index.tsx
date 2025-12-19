@@ -1,6 +1,6 @@
 import { Typography } from "@/shared/ui/Typography";
 import { theme } from "@/constants/theme";
-import { ChatMessage as ChatMessageType } from "@/types/chat";
+import { ChatMessage as ChatMessageType } from "@/types/ChatMessage";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -8,8 +8,14 @@ type ChatMessageProps = {
   message: ChatMessageType;
 };
 
-const formatTime = (timestamp: Date | string): string => {
-  const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
+
+const formatTime = (timestamp?: Date | string): string => {
+  if (!timestamp) return "";
+  const date =
+    typeof timestamp === "string" && timestamp
+      ? new Date(timestamp)
+      : (timestamp as Date);
+  if (isNaN(date.getTime())) return "";
   const hours = date.getHours().toString().padStart(2, "0");
   const minutes = date.getMinutes().toString().padStart(2, "0");
   return `${hours}:${minutes}`;
@@ -36,14 +42,14 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
             message.isOwn ? styles.ownMessageText : styles.otherMessageText,
           ]}
         >
-          {message.text}
+          {message.text ?? message.content ?? ""}
         </Typography>
       </View>
     </View>
   );
 };
 
-export const ChatTimestamp = ({ timestamp }: { timestamp: Date | string }) => {
+export const ChatTimestamp = ({ timestamp }: { timestamp?: Date | string }) => {
   return (
     <View style={styles.timestampContainer}>
       <Typography type="label" style={styles.timestamp}>
@@ -100,4 +106,3 @@ const styles = StyleSheet.create({
 });
 
 export default ChatMessage;
-

@@ -3,59 +3,85 @@ import { theme } from "@/constants/theme";
 import SearchInput from "@/shared/ui/search-input";
 import Header from "@/components/Header";
 import { Typography } from "@/shared/ui/Typography";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View, ActivityIndicator } from "react-native";
+import { useRandomUsers } from "@/hooks/useUsers";
 
 export default function SearchScreen() {
-    return (
-        <View style={styles.container}>
-            <Header />
-            <View style={styles.searchInputContainer}>
-              <SearchInput />
-            </View>
-            <ScrollView
-              style={styles.scrollerWrapper}
-              contentContainerStyle={styles.scroller}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            >
-              {new Array(10).fill(0).map((item, index) => {
-                return (
-                  <View key={index}>
-                    <UserCard />
-                  </View>
-                );
-              })}
-            </ScrollView>
+  const { users, isLoading, error } = useRandomUsers();
 
-            <View style={styles.otherSection}>
-              <Typography type="title" style={styles.sectionTitle}>
-                Все остальное
-              </Typography>
-              <View style={styles.grid}>
-                <Pressable style={[styles.card, styles.cardLight]}>
-                  <Typography type="title" style={styles.cardText}>
-                    Для тебя
-                  </Typography>
-                </Pressable>
-                <Pressable style={[styles.card, styles.cardGreen]}>
-                  <Typography type="title" style={styles.cardText}>
-                    Врачи
-                  </Typography>
-                </Pressable>
-                <Pressable style={[styles.card, styles.cardGreen]}>
-                  <Typography type="title" style={styles.cardText}>
-                    Питомцы
-                  </Typography>
-                </Pressable>
-                <Pressable style={[styles.card, styles.cardLight]}>
-                  <Typography type="title" style={styles.cardText}>
-                    Лакомства
-                  </Typography>
-                </Pressable>
-              </View>
+  return (
+    <View style={styles.container}>
+      <Header />
+
+      <View style={styles.searchInputContainer}>
+        <SearchInput />
+      </View>
+
+      <Typography type="title" style={styles.sectionTitle}>
+        Пользователи
+      </Typography>
+
+      {isLoading && (
+        <Typography type="label" style={{ textAlign: "center" }}>
+          Загружаем пользователей…
+        </Typography>
+      )}
+
+      {error && (
+        <Typography type="label" style={{ color: "red", textAlign: "center" }}>
+          {error}
+        </Typography>
+      )}
+
+      {!isLoading && !error && (
+        <ScrollView
+          style={styles.scrollerWrapper}
+          contentContainerStyle={styles.scroller}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        >
+          {users.map((user) => (
+            <View key={user.id}>
+              <UserCard
+                username={user.username}
+                role={user.role}
+                width={140}
+              />
             </View>
+          ))}
+        </ScrollView>
+      )}
+
+      <View style={styles.otherSection}>
+        <Typography type="title" style={styles.sectionTitle}>
+          Все остальное
+        </Typography>
+
+        <View style={styles.grid}>
+          <Pressable style={[styles.card, styles.cardLight]}>
+            <Typography type="title" style={styles.cardText}>
+              Для тебя
+            </Typography>
+          </Pressable>
+          <Pressable style={[styles.card, styles.cardGreen]}>
+            <Typography type="title" style={styles.cardText}>
+              Врачи
+            </Typography>
+          </Pressable>
+          <Pressable style={[styles.card, styles.cardGreen]}>
+            <Typography type="title" style={styles.cardText}>
+              Питомцы
+            </Typography>
+          </Pressable>
+          <Pressable style={[styles.card, styles.cardLight]}>
+            <Typography type="title" style={styles.cardText}>
+              Лакомства
+            </Typography>
+          </Pressable>
         </View>
-    );
+      </View>
+    </View>
+  );
 }
 const styles = StyleSheet.create({
 
@@ -129,6 +155,7 @@ const styles = StyleSheet.create({
       paddingBottom: 24,
     },
     sectionTitle: {
+      marginLeft: 12,
       marginBottom: 12,
       color: theme.color.background.darkGreen,
       fontSize: 20,

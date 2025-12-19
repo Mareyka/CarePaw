@@ -1,65 +1,132 @@
-import { useEffect, useState } from "react";
-import { Chat, ChatMessage } from "@/types/chat";
+import { useEffect, useRef, useState } from "react";
+import SockJS from "sockjs-client";
+import { Client } from "@stomp/stompjs";
+import { apiService, API_URL, API_URL_WITHOUT_API } from "@/api/service";
+import { ChatMessage } from "@/types/ChatMessage";
 
-const fetchChatData = async (chatId: string): Promise<Chat> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        id: chatId,
-        name: "Врач Алена",
-        messages: [
-          {
-            id: "1",
-            text: "Здравствуйте, мы к вам записаны на 13:20. Нам с собой что-то нужно брать?",
-            timestamp: new Date("2025-11-12T11:49:00"),
-            isOwn: true,
-          },
-          {
-            id: "2",
-            text: "Здравствуйте",
-            timestamp: new Date("2025-11-12T11:50:00"),
-            isOwn: false,
-            senderName: "Врач Алена",
-          },
-          {
-            id: "3",
-            text: "Да, нужны пеленка, паспорт животного и лакомство для вашего питомца ))",
-            timestamp: new Date("2025-11-12T11:51:00"),
-            isOwn: false,
-            senderName: "Врач Алена",
-          },
-        ],
-      });
-    }, 100);
-  });
-};
-
-export const useChat = (chatId: string | undefined) => {
+export const useChat = (recipientId?: string) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [chatName, setChatName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [chatName, setChatName] = useState<string | null>(null);
+  const stompClientRef = useRef<Client | null>(null);
+
+  const currentUser = apiService.getCurrentUserFromMemory();
+  const senderId = currentUser?.id;
 
   useEffect(() => {
-    const loadChat = async () => {
-      if (chatId) {
-        setIsLoading(true);
-        const chatData = await fetchChatData(chatId);
-        setMessages(chatData.messages);
-        setChatName(chatData.name);
+    if (!senderId || !recipientId) return;
+
+    let stompClient: Client;
+
+    const loadHistory = async () => {
+      try {
+        const resp = await fetch(
+          `${API_URL}/chat/history?userAId=${senderId}&userBId=${recipientId}`
+        );
+        const raw: ChatMessage[] = await resp.json();
+        const normalized = raw.map((m) => ({
+          messageId: m.messageId ?? Date.now(),
+          chatId: m.chatId,
+          senderId: m.senderId,
+          recipientId: m.recipientId,
+          content: m.content ?? "",
+          text: m.text ?? m.content ?? "",
+          timestamp: m.timestamp ?? new Date().toISOString(),
+          isOwn: m.senderId === senderId,
+        }));
+        setMessages(
+          normalized.sort(
+            (a, b) =>
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          )
+        );
+      } catch (e) {
+        console.error("Ошибка загрузки истории:", e);
+      } finally {
         setIsLoading(false);
       }
     };
-    loadChat();
-  }, [chatId]);
+
+    loadHistory();
+
+    const socketFactory = () =>
+      new SockJS(`${API_URL_WITHOUT_API}/ws-chat`) as any;
+
+    stompClient = new Client({
+      webSocketFactory: socketFactory,
+      reconnectDelay: 5000,
+      onConnect: () => {
+        console.log("Connected to chat WS");
+        stompClient.subscribe(`/topic/chat.broadcast`, (payload) => {
+          const msg: ChatMessage = JSON.parse(payload.body);
+          const formatted: ChatMessage = {
+            messageId: msg.messageId ?? Date.now(),
+            chatId: msg.chatId,
+            senderId: msg.senderId,
+            recipientId: msg.recipientId,
+            content: msg.content ?? "",
+            text: msg.text ?? msg.content ?? "",
+            timestamp: msg.timestamp ?? new Date().toISOString(),
+            isOwn: msg.senderId === senderId,
+          };
+          if (
+            (formatted.senderId === senderId &&
+              formatted.recipientId.toString() === recipientId) ||
+            (formatted.recipientId === senderId &&
+              formatted.senderId.toString() === recipientId)
+          ) {
+            setMessages((prev) => [...prev, formatted]);
+          }
+        });
+      },
+      onStompError: (frame) => {
+        console.error("Broker error", frame.headers["message"]);
+      },
+    });
+
+    stompClient.activate();
+    stompClientRef.current = stompClient;
+
+    return () => {
+      console.log("WS disconnected");
+      stompClient.deactivate();
+    };
+  }, [senderId, recipientId]);
 
   const sendMessage = (text: string) => {
-    const newMessage: ChatMessage = {
-      id: Date.now().toString(),
+    const client = stompClientRef.current;
+    if (!client || !client.connected) {
+      console.warn("STOMP client not connected");
+      return;
+    }
+    if (!text.trim()) return;
+
+    if (senderId === Number(recipientId)) {
+         console.warn("Нельзя отправить сообщение самому себе");
+         return;
+       }
+
+    const msg: ChatMessage = {
+      messageId: Date.now().toString(),
+      chatId: "",
+      senderId: senderId ?? 0,
+      recipientId: Number(recipientId),
+      content: text,
       text,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       isOwn: true,
     };
-    setMessages((prev) => [...prev, newMessage]);
+
+    setMessages((prev) => [...prev, msg]);
+
+    client.publish({
+      destination: "/app/chat.send",
+      body: JSON.stringify({
+        senderId,
+        recipientId: Number(recipientId),
+        content: text,
+      }),
+    });
   };
 
   return {
@@ -69,4 +136,3 @@ export const useChat = (chatId: string | undefined) => {
     sendMessage,
   };
 };
-
