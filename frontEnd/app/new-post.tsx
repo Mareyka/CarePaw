@@ -1,7 +1,7 @@
 import { buildDefaultHeaderOptions } from "@/shared/ui/header";
 import { theme } from "@/constants/theme";
 import { Typography } from "@/shared/ui/Typography";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -16,13 +16,15 @@ import * as ImagePicker from "expo-image-picker";
 import { LocationSelector } from "@/components/location-selector";
 import { PostTypeSelector, PostType } from "@/components/post-type-selector";
 import { useLocations } from "@/hooks/useLocations";
+import { apiService } from "@/api/service";
 
 export default function NewPostScreen() {
   const [image, setImage] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [postType, setPostType] = useState<PostType | null>(null);
-  const { locations } = useLocations();
+  const { locations, isLoading, error } = useLocations();
+  const router = useRouter();
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -43,13 +45,52 @@ export default function NewPostScreen() {
     }
   };
 
-  const handlePublish = () => {
-    if (!image) {
-      Alert.alert("Ошибка", "Выберите изображение");
-      return;
+  const handlePublish = async () => {
+    try {
+      if (!image) {
+        Alert.alert("Ошибка", "Выберите изображение");
+        return;
+      }
+      if (!description.trim()) {
+        Alert.alert("Ошибка", "Введите описание поста");
+        return;
+      }
+      if (!selectedLocationId) {
+        Alert.alert("Ошибка", "Выберите локацию");
+        return;
+      }
+  
+      const currentUser = apiService.getCurrentUserFromMemory();
+      if (!currentUser) {
+        Alert.alert("Ошибка", "Вы не авторизованы");
+        return;
+      }
+  
+      const isUrgently = postType === "urgent";
+  
+      console.log("Отправка поста:", {
+        title: description,
+        placeId: selectedLocationId,
+        isUrgently,
+        userId: currentUser.id,
+        imageUri: image,
+      });
+  
+      const newPost = await apiService.createPost({
+        title: description,
+        placeId: selectedLocationId,
+        isUrgently,
+        userId: currentUser.id,
+        imageUri: image,
+      });
+  
+      console.log("Пост создан:", newPost);
+      router.replace('/(tabs)'); 
+    } catch (error: any) {
+      Alert.alert("Ошибка публикации", error.message || "Что-то пошло не так");
     }
-    console.log({ image, description, selectedLocationId, postType });
   };
+
 
   return (
     <>
@@ -80,11 +121,25 @@ export default function NewPostScreen() {
           />
         </View>
 
-        <LocationSelector
-          locations={locations}
-          selectedLocationId={selectedLocationId}
-          onLocationSelect={setSelectedLocationId}
-        />
+        {isLoading && (
+  <Typography type="label" style={{ textAlign: "center" }}>
+    Загружаем локации…
+  </Typography>
+)}
+
+{error && (
+  <Typography type="label" style={{ color: "red", textAlign: "center" }}>
+    Ошибка: {error}
+  </Typography>
+)}
+
+{!isLoading && !error && (
+  <LocationSelector
+    locations={locations}
+    selectedLocationId={selectedLocationId}
+    onLocationSelect={setSelectedLocationId}
+  />
+)}
 
         <PostTypeSelector
           selectedType={postType}

@@ -7,37 +7,31 @@ import com.example.animals.service.ChatService;
 import jakarta.validation.Valid;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessagingTemplate;  // 👈 импорт нужного класса
 import org.springframework.stereotype.Controller;
 
-/**
- * WebSocket/STOMP контроллер.
- *
- * Клиент:
- * - Подключается к /ws-chat (SockJS/Stomp)
- * - Отправляет сообщение на /app/chat.send
- * - Подписывается на /topic/chat.{chatIdBetweenUsers}
- *
- * chatId на фронте можно не знать заранее: после первого сообщения
- * сервер вернёт chatId в ChatMessageResponse, и фронт подпишется на него.
- */
 @Controller
 public class ChatWebSocketController {
 
     private final ChatService chatService;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    public ChatWebSocketController(ChatService chatService) {
+    public ChatWebSocketController(ChatService chatService, SimpMessagingTemplate messagingTemplate) {
         this.chatService = chatService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @MessageMapping("/chat.send")
-    @SendTo("/topic/chat.broadcast")
-    public ChatMessageResponse sendMessage(@Valid @Payload ChatMessageRequest req) {
-        Message message = chatService.createMessage(req.getSenderId(), req.getRecipientId(), req.getContent());
+    public void sendMessage(@Valid @Payload ChatMessageRequest req) {
+        Message message = chatService.createMessage(
+                req.getSenderId(),
+                req.getRecipientId(),
+                req.getContent()
+        );
 
         Long chatId = message.getChat().getId();
 
-        return new ChatMessageResponse(
+        ChatMessageResponse resp = new ChatMessageResponse(
                 chatId,
                 message.getId(),
                 message.getSenderId(),
@@ -45,8 +39,7 @@ public class ChatWebSocketController {
                 message.getContent(),
                 message.getCreatedAt()
         );
+
+        messagingTemplate.convertAndSend("/topic/chat." + chatId, resp);
     }
 }
-
-
-

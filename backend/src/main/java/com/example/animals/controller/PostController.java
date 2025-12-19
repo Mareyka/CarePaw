@@ -48,7 +48,6 @@ public class PostController {
         this.userRepository = userRepository;
     }
 
-    // === Существующие методы (остаются без изменений) ===
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> createPost(
@@ -131,8 +130,6 @@ public class PostController {
         return ResponseEntity.ok(list);
     }
 
-    // === Новые методы для лайков и сохранений ===
-
     @GetMapping("/{postId}/details")
     public ResponseEntity<PostResponseDTO> getPostWithDetails(
             @PathVariable Long postId,
@@ -164,7 +161,6 @@ public class PostController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        // Проверяем, не лайкнул ли уже пользователь
         if (postLikeRepository.existsByPostIdAndUserId(postId, userId)) {
             return ResponseEntity.badRequest().build();
         }
@@ -212,7 +208,6 @@ public class PostController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        // Проверяем, не сохранил ли уже пользователь
         if (postSaveRepository.existsByPostIdAndUserId(postId, userId)) {
             return ResponseEntity.badRequest().build();
         }
@@ -282,8 +277,6 @@ public class PostController {
         return ResponseEntity.ok(list);
     }
 
-    // === Вспомогательные методы ===
-
     private String saveFile(MultipartFile file) throws IOException {
         String originalName = file.getOriginalFilename();
         String ext = "";
@@ -323,7 +316,6 @@ public class PostController {
         dto.setPhotoUrl(post.getPhotoUrl());
         dto.setUserId(post.getUserId());
 
-        // Получаем username пользователя
         User author = userRepository.findById(post.getUserId()).orElse(null);
         dto.setUsername(author != null ? author.getUsername() : "Unknown");
 
@@ -331,11 +323,9 @@ public class PostController {
         dto.setUrgently(post.isUrgently());
         dto.setCreatedAt(post.getCreatedAt());
 
-        // Получаем количество лайков и сохранений
         dto.setLikesCount(postLikeRepository.countByPostId(post.getId()));
         dto.setSavesCount(postSaveRepository.countByPostId(post.getId()));
 
-        // Проверяем, лайкнул/сохранил ли текущий пользователь
         if (currentUserId != null) {
             dto.setLikedByCurrentUser(postLikeRepository.existsByPostIdAndUserId(post.getId(), currentUserId));
             dto.setSavedByCurrentUser(postSaveRepository.existsByPostIdAndUserId(post.getId(), currentUserId));

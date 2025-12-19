@@ -1,7 +1,7 @@
 import { Alert } from 'react-native';
 
-const API_URL = 'http://localhost:8080/api';
-
+export const API_URL = 'http://10.0.2.2:8080/api';
+export const API_URL_WITHOUT_API = 'http://10.0.2.2:8080';
 interface RegisterData {
   username: string;
   email: string;
@@ -394,7 +394,62 @@ async checkSubscriptionStatus(followerId: number, followingId: number | string):
     return false;
   }
 }
+
+async createPost({
+  title,
+  placeId,
+  isUrgently,
+  userId,
+  imageUri
+}: {
+  title: string;
+  placeId: string | number;
+  isUrgently: boolean;
+  userId: number;
+  imageUri?: string | null;
+}): Promise<any> {
+  try {
+    console.log("Отправка нового поста...");
+
+    const formData = new FormData();
+
+    formData.append("title", title);
+    formData.append("placeId", String(placeId));
+    formData.append("isUrgently", String(isUrgently));
+    formData.append("userId", String(userId));
+
+    if (imageUri) {
+      const fileName = imageUri.split("/").pop()!;
+      const fileType = fileName.split(".").pop();
+      formData.append("photo", {
+        uri: imageUri,
+        type: `image/${fileType}`,
+        name: fileName,
+      } as any);
+    }
+
+    const response = await fetch(`${API_URL}/posts`, {
+      method: "POST",
+      headers: {
+        ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
+      },
+      body: formData,
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      throw new Error(responseText || "Ошибка загрузки поста");
+    }
+
+    const data = JSON.parse(responseText);
+    console.log("Пост успешно создан:", data);
+    return data;
+  } catch (error) {
+    console.error("Ошибка создания поста:", error);
+    throw new Error("Не удалось создать пост. Проверь соединение или данные.");
+  }
+}
 }
 
-// Создаем и экспортируем синглтон экземпляр
 export const apiService = new ApiService();
