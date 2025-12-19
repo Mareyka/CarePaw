@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 
-const API_URL = 'http://localhost:8080/api';
+export const API_URL = 'http://localhost:8080/api';
 export const API_URL_WITHOUT_API = 'http://10.0.2.2:8080';
 
 export interface RegisterData {
