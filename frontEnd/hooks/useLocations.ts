@@ -1,33 +1,28 @@
 import { useEffect, useState } from "react";
 import { Location } from "@/components/location-selector";
-
-const fetchLocations = async (): Promise<Location[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { id: "minsk", name: "Минск" },
-        { id: "bsu", name: "БГУ, Факультет длыфовалдфыовадлоыфвдлофывфывф" },
-        { id: "kamenka", name: "Каменка" },
-      ]);
-    }, 100);
-  });
-};
+import { locationService } from "@/api/locationService";
 
 export const useLocations = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadLocations = async () => {
-      setIsLoading(true);
-      const data = await fetchLocations();
-      setLocations(data);
-      setIsLoading(false);
+      try {
+        setIsLoading(true);
+        const data = await locationService.getAll();
+        setLocations(data);
+      } catch (err: any) {
+        console.error("Ошибка загрузки локаций:", err);
+        setError(err.message || "Не удалось загрузить локации");
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadLocations();
   }, []);
 
-  return { locations, isLoading };
+  return { locations, isLoading, error };
 };
-

@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
 
-const API_URL = 'http://localhost:8080/api';
+export const API_URL = 'http://localhost:8080/api';
+export const API_URL_WITHOUT_API = 'http://10.0.2.2:8080';
 
 export interface RegisterData {
   username: string;
@@ -54,7 +55,7 @@ class ApiService {
   // Регистрация
   async register(data: RegisterData): Promise<UserResponse> {
     console.log('🚀 Отправка регистрации:', data.username);
-    
+
     const response = await fetch(`${API_URL}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -73,7 +74,7 @@ class ApiService {
   // Авторизация
   async login(identifier: string, password: string): Promise<UserResponse> {
     console.log('🔐 Попытка входа:', identifier);
-    
+
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -133,12 +134,12 @@ class ApiService {
     if (!followerId) throw new Error("Сначала войдите в аккаунт");
 
     const response = await fetch(
-      `${API_URL}/subscriptions/toggle/${followingId}?followerId=${followerId}`, 
+      `${API_URL}/subscriptions/toggle/${followingId}?followerId=${followerId}`,
       { method: 'POST' }
     );
-    
+
     if (!response.ok) await this.handleError(response);
-    return await response.text(); 
+    return await response.text();
   }
 
   // Счетчики
@@ -162,8 +163,64 @@ class ApiService {
   }
 
   logout(): void {
-    this.currentUser = null;
+        this.currentUser = null;
+    }
+
+async createPost({
+  title,
+  placeId,
+  isUrgently,
+  userId,
+  imageUri
+}: {
+  title: string;
+  placeId: string | number;
+  isUrgently: boolean;
+  userId: number;
+  imageUri?: string | null;
+}): Promise<any> {
+  try {
+    console.log("Отправка нового поста...");
+
+    const formData = new FormData();
+
+    formData.append("title", title);
+    formData.append("placeId", String(placeId));
+    formData.append("isUrgently", String(isUrgently));
+    formData.append("userId", String(userId));
+
+    if (imageUri) {
+      const fileName = imageUri.split("/").pop()!;
+      const fileType = fileName.split(".").pop();
+      formData.append("photo", {
+        uri: imageUri,
+        type: `image/${fileType}`,
+        name: fileName,
+      } as any);
+    }
+
+    const response = await fetch(`${API_URL}/posts`, {
+      method: "POST",
+      headers: {
+        ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
+      },
+      body: formData,
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      throw new Error(responseText || "Ошибка загрузки поста");
+    }
+
+    const data = JSON.parse(responseText);
+    console.log("Пост успешно создан:", data);
+    return data;
+  } catch (error) {
+    console.error("Ошибка создания поста:", error);
+    throw new Error("Не удалось создать пост. Проверь соединение или данные.");
   }
+}
 }
 
 export const apiService = new ApiService();

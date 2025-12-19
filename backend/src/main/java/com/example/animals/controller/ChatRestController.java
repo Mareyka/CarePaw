@@ -1,16 +1,16 @@
 package com.example.animals.controller;
 
 import com.example.animals.dto.ChatMessageResponse;
+import com.example.animals.dto.ChatSummaryResponse;
+import com.example.animals.model.Chat;
 import com.example.animals.model.Message;
+import com.example.animals.model.User;
 import com.example.animals.service.ChatService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -43,6 +43,32 @@ public class ChatRestController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<Long> createChat(@RequestParam Long userAId,
+                                           @RequestParam Long userBId) {
+        Chat chat = chatService.getOrCreateChat(userAId, userBId);
+        return ResponseEntity.ok(chat.getId());
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<ChatSummaryResponse>> getUserChats(@PathVariable Long userId) {
+        List<ChatSummaryResponse> chats = chatService
+                .getChatsForUser(userId).stream()
+                .map(chat -> {
+                    Message last = chatService.getLastMessage(chat.getId());
+                    User companion = chatService.getCompanion(chat, userId);
+                    return new ChatSummaryResponse(
+                            chat.getId(),
+                            companion.getUsername(),
+                            companion.getPhoto(),
+                            last != null ? last.getContent() : "",
+                            Objects.equals(chat.getUser1Id(), userId) ?  chat.getUser2Id() : chat.getUser1Id()
+                    );
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(chats);
     }
 }
 

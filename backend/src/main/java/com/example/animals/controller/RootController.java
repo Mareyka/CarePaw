@@ -6,6 +6,7 @@ import com.example.animals.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -43,6 +44,38 @@ public class RootController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(userResponses);
+    }
+
+    @GetMapping("/users/random")
+    public ResponseEntity<List<UserResponse>> getRandomUsers(
+            @RequestParam Long excludeId,
+            @RequestParam(defaultValue = "5") int limit) {
+
+        List<User> users = userService.getAllUsers();
+
+        List<User> filtered = users.stream()
+                .filter(u -> !u.getId().equals(excludeId))
+                .collect(Collectors.toList());
+
+        Collections.shuffle(filtered);
+
+        List<User> randomSelection = filtered.stream()
+                .limit(limit)
+                .toList();
+
+        List<UserResponse> result = randomSelection.stream()
+                .map(user -> new UserResponse(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        user.getRole(),
+                        user.getDescription(),
+                        user.getPhoto(),
+                        user.getCreatedAt()
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
     }
 
 

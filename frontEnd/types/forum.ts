@@ -3,6 +3,7 @@ export type Forum = {
   title: string;
   lastMessage?: string;
   avatarUri?: string;
+  recipientId: number;
 };
 
 export type ForumCategory = {
