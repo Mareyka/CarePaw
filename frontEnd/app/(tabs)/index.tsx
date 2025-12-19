@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Text, ActivityIndicator, RefreshControl } from 'react-native';
+import { 
+  View, 
+  StyleSheet, 
+  ScrollView, 
+  Text, 
+  ActivityIndicator, 
+  RefreshControl,
+  Alert 
+} from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext'; // Импортируем useAuth
 import Header from '../../components/Header';
 import Post from '../../components/Post';
 import TabBar from '../../components/TabBar';
@@ -10,15 +19,17 @@ import { GlobalStyles } from '../../constants/theme';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
-// Определяем тип для поста
+// Обновляем тип для поста чтобы соответствовать API
 type PostType = {
   id: number;
   title: string;
   photoUrl: string;
+  fullPhotoUrl?: string;
   userId: number;
   username: string;
   placeName: string;
-  isUrgently: boolean;
+  urgently: boolean;
+  createdAt: string;
   likesCount: number;
   savesCount: number;
   likedByCurrentUser: boolean;
@@ -27,12 +38,10 @@ type PostType = {
 
 export default function HomeScreen() {
   const router = useRouter();
-  // Явно указываем тип данных для posts
+  const { user } = useAuth(); // Используем user из контекста
   const [posts, setPosts] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
-  const currentUserId = 1;
 
   const handleQuestionnairePress = () => {
     router.push('/(tabs)/questionnaire');
@@ -40,41 +49,54 @@ export default function HomeScreen() {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/posts/all-detailed`);
+      console.log('Fetching posts from API...');
+      
+      // Подготавливаем заголовки
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Если пользователь авторизован, добавляем его ID в заголовок
+      if (user?.id) {
+        headers['X-User-Id'] = user.id.toString();
+        console.log('Adding X-User-Id header:', user.id);
+      } else {
+        console.log('User not authenticated, fetching posts without user context');
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/posts/all-detailed`, {
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
-      setPosts(data || []);
+      console.log('API Response:', data.length, 'posts');
+      
+      // Преобразуем данные API в нужный формат
+      const formattedPosts: PostType[] = data.map((post: any) => ({
+        id: post.id,
+        title: post.title || 'Без названия',
+        photoUrl: post.photoUrl || '',
+        fullPhotoUrl: post.fullPhotoUrl || post.photoUrl,
+        userId: post.userId || 0,
+        username: post.username || 'Неизвестный',
+        placeName: post.placeName || 'Местоположение не указано',
+        urgently: post.urgently || false,
+        createdAt: post.createdAt || new Date().toISOString(),
+        likesCount: post.likesCount || 0,
+        savesCount: post.savesCount || 0,
+        likedByCurrentUser: post.likedByCurrentUser || false,
+        savedByCurrentUser: post.savedByCurrentUser || false
+      }));
+      
+      console.log('Formatted posts:', formattedPosts.length, 'posts');
+      setPosts(formattedPosts);
     } catch (error) {
-      console.log('Using fallback data');
-      // Простые fallback данные
-      const fallbackPosts: PostType[] = [
-        {
-          id: 1,
-          title: "Найдена собака в парке",
-          photoUrl: "https://picsum.photos/400/600",
-          userId: 1,
-          username: "user1",
-          placeName: "Центральный парк",
-          isUrgently: false,
-          likesCount: 24,
-          savesCount: 5,
-          likedByCurrentUser: false,
-          savedByCurrentUser: false
-        },
-        {
-          id: 2,
-          title: "Пропал кот",
-          photoUrl: "https://picsum.photos/400/600",
-          userId: 2,
-          username: "user2",
-          placeName: "Микрорайон Восточный",
-          isUrgently: true,
-          likesCount: 89,
-          savesCount: 12,
-          likedByCurrentUser: true,
-          savedByCurrentUser: false
-        }
-      ];
-      setPosts(fallbackPosts);
+      console.error('Error fetching posts:', error);
+      Alert.alert('Ошибка', 'Не удалось загрузить посты');
     }
   };
 
@@ -90,9 +112,39 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  const handleLikeChanged = (postId: number, isLiked: boolean) => {
+    setPosts(prevPosts => 
+      prevPosts.map(post => 
+        post.id === postId 
+          ? { 
+              ...post, 
+              likedByCurrentUser: isLiked,
+              likesCount: isLiked ? (post.likesCount || 0) + 1 : Math.max(0, (post.likesCount || 0) - 1)
+            }
+          : post
+      )
+    );
+  };
+
+  const handleSaveChanged = (postId: number, isSaved: boolean) => {
+    setPosts(prevPosts => 
+      prevPosts.map(post => 
+        post.id === postId 
+          ? { 
+              ...post, 
+              savedByCurrentUser: isSaved,
+              savesCount: isSaved ? (post.savesCount || 0) + 1 : Math.max(0, (post.savesCount || 0) - 1)
+            }
+          : post
+      )
+    );
+  };
+
+  // Загружаем посты при изменении user
   useEffect(() => {
+    // Не ждем загрузки - можно сразу загружать посты
     loadPosts();
-  }, []);
+  }, [user?.id]); // Перезагружаем посты при изменении ID пользователя
 
   if (loading && posts.length === 0) {
     return (
@@ -120,13 +172,20 @@ export default function HomeScreen() {
           />
         }
       >
-        {posts.map(post => (
-          <Post 
-            key={post.id}
-            postData={post}
-            currentUserId={currentUserId}
-          />
-        ))}
+        {posts.length === 0 ? (
+          <View style={styles.noPostsContainer}>
+            <Text style={styles.noPostsText}>Нет постов для отображения</Text>
+          </View>
+        ) : (
+          posts.map(post => (
+            <Post 
+              key={post.id}
+              postData={post}
+              onLikeChanged={handleLikeChanged}
+              onSaveChanged={handleSaveChanged}
+            />
+          ))
+        )}
 
         <View style={styles.questionBlock}>
           <Text style={[GlobalStyles.textSpecial, styles.questiontext]}>
@@ -158,12 +217,20 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingBottom: 52,
+    paddingBottom: 32,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  noPostsContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  noPostsText: {
+    fontSize: 16,
+    color: '#666',
   },
   questionBlock: {
     width: '100%' ,

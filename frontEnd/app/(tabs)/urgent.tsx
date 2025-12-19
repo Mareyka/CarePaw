@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext'; // Импортируем useAuth
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 import Post from '../../components/Post';
-import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api'; // Замените на ваш IP
+const API_BASE_URL = 'http://localhost:8080/api';
 
-// Тип для поста
 type PostType = {
   id: number;
   title: string;
   photoUrl: string;
+  fullPhotoUrl?: string;
   userId: number;
   username: string;
   placeName: string;
-  isUrgently: boolean;
+  urgently: boolean;
+  createdAt: string;
   likesCount: number;
   savesCount: number;
   likedByCurrentUser: boolean;
@@ -23,65 +24,65 @@ type PostType = {
 };
 
 export default function UrgentScreen() {
+  const { user } = useAuth(); // Используем user из контекста
   const [urgentPosts, setUrgentPosts] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
-  const currentUserId = 1; // Временно, пока нет авторизации
 
   const fetchUrgentPosts = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/posts`, {
-        params: { isUrgently: true },
-        headers: { 'X-User-Id': currentUserId.toString() }
+      console.log('Fetching urgent posts from API...');
+      
+      // Подготавливаем заголовки
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Если пользователь авторизован, добавляем его ID в заголовок
+      if (user?.id) {
+        headers['X-User-Id'] = user.id.toString();
+        console.log('Adding X-User-Id header:', user.id);
+      } else {
+        console.log('User not authenticated, fetching posts without user context');
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/posts/all-detailed`, {
+        headers
       });
-      // Преобразуем данные в формат PostResponseDTO
-      const urgentPostsData: PostType[] = response.data.map((post: any) => ({
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('All posts from API:', data.length, 'posts');
+      
+      // Фильтруем только срочные посты
+      const urgentData = data.filter((post: any) => post.urgently === true);
+      console.log('Filtered urgent posts:', urgentData.length, 'posts');
+      
+      // Преобразуем данные API в нужный формат
+      const formattedPosts: PostType[] = urgentData.map((post: any) => ({
         id: post.id,
-        title: post.title,
-        photoUrl: post.photoUrl,
-        userId: post.userId,
-        username: "Пользователь", // Временное значение
-        placeName: post.placeName,
-        isUrgently: post.isUrgently,
-        likesCount: 0, // Временное значение
-        savesCount: 0, // Временное значение
-        likedByCurrentUser: false,
-        savedByCurrentUser: false
+        title: post.title || 'Без названия',
+        photoUrl: post.photoUrl || '',
+        fullPhotoUrl: post.fullPhotoUrl || post.photoUrl,
+        userId: post.userId || 0,
+        username: post.username || 'Неизвестный',
+        placeName: post.placeName || 'Местоположение не указано',
+        urgently: post.urgently || false,
+        createdAt: post.createdAt || new Date().toISOString(),
+        likesCount: post.likesCount || 0,
+        savesCount: post.savesCount || 0,
+        likedByCurrentUser: post.likedByCurrentUser || false,
+        savedByCurrentUser: post.savedByCurrentUser || false
       }));
-      setUrgentPosts(urgentPostsData);
+      
+      console.log('Formatted urgent posts:', formattedPosts);
+      setUrgentPosts(formattedPosts);
     } catch (error) {
       console.error('Error fetching urgent posts:', error);
-      // Запасные данные для демонстрации
-      const fallbackPosts: PostType[] = [
-        {
-          id: 1,
-          title: "Срочно! Помогите найти пропавшего кота",
-          photoUrl: "https://picsum.photos/400/600",
-          userId: 1,
-          username: "user1",
-          placeName: "Центральный парк",
-          isUrgently: true,
-          likesCount: 124,
-          savesCount: 15,
-          likedByCurrentUser: false,
-          savedByCurrentUser: false
-        },
-        {
-          id: 2,
-          title: "Нужна срочная помощь с передержкой",
-          photoUrl: "https://picsum.photos/400/600",
-          userId: 2,
-          username: "user2",
-          placeName: "Микрорайон Северный",
-          isUrgently: true,
-          likesCount: 89,
-          savesCount: 7,
-          likedByCurrentUser: true,
-          savedByCurrentUser: false
-        }
-      ];
-      setUrgentPosts(fallbackPosts);
+      Alert.alert('Ошибка', 'Не удалось загрузить посты');
     }
   };
 
@@ -97,33 +98,40 @@ export default function UrgentScreen() {
     setRefreshing(false);
   };
 
-  const handleLikeChanged = (postId: number, isLiked: boolean) => {
-    setUrgentPosts(urgentPosts.map(post => 
-      post.id === postId 
-        ? { 
-            ...post, 
-            likedByCurrentUser: isLiked,
-            likesCount: isLiked ? post.likesCount + 1 : post.likesCount - 1
-          }
-        : post
-    ));
+  // Обработчик изменения лайка
+  const handleLikeChanged = (postId: number, liked: boolean) => {
+    setUrgentPosts(prevPosts => 
+      prevPosts.map(post => 
+        post.id === postId 
+          ? { 
+              ...post, 
+              likedByCurrentUser: liked,
+              likesCount: liked ? post.likesCount + 1 : Math.max(0, post.likesCount - 1)
+            }
+          : post
+      )
+    );
   };
 
-  const handleSaveChanged = (postId: number, isSaved: boolean) => {
-    setUrgentPosts(urgentPosts.map(post => 
-      post.id === postId 
-        ? { 
-            ...post, 
-            savedByCurrentUser: isSaved,
-            savesCount: isSaved ? post.savesCount + 1 : post.savesCount - 1
-          }
-        : post
-    ));
+  // Обработчик изменения сохранения
+  const handleSaveChanged = (postId: number, saved: boolean) => {
+    setUrgentPosts(prevPosts => 
+      prevPosts.map(post => 
+        post.id === postId 
+          ? { 
+              ...post, 
+              savedByCurrentUser: saved,
+              savesCount: saved ? post.savesCount + 1 : Math.max(0, post.savesCount - 1)
+            }
+          : post
+      )
+    );
   };
 
+  // Загружаем посты при изменении user
   useEffect(() => {
     loadPosts();
-  }, []);
+  }, [user?.id]); // Перезагружаем посты при изменении ID пользователя
 
   if (loading && urgentPosts.length === 0) {
     return (
@@ -151,15 +159,23 @@ export default function UrgentScreen() {
           />
         }
       >
-        {urgentPosts.map(post => (
-          <Post 
-            key={post.id}
-            postData={post}
-            currentUserId={currentUserId}
-            onLikeChanged={handleLikeChanged}
-            onSaveChanged={handleSaveChanged}
-          />
-        ))}
+        {urgentPosts.length === 0 ? (
+          <View style={styles.noPostsContainer}>
+            <Text style={styles.noPostsText}>Нет срочных постов</Text>
+            <Text style={styles.noPostsSubtext}>
+              Все животные в безопасности!
+            </Text>
+          </View>
+        ) : (
+          urgentPosts.map(post => (
+            <Post 
+              key={post.id}
+              postData={post}
+              onLikeChanged={handleLikeChanged}
+              onSaveChanged={handleSaveChanged}
+            />
+          ))
+        )}
       </ScrollView>
       <TabBar />
     </View>
@@ -179,5 +195,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  noPostsContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  noPostsText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4E5B3F',
+    marginBottom: 8,
+  },
+  noPostsSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });

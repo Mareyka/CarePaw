@@ -26,14 +26,18 @@ public class UserService {
     }
 
     // Метод для регистрации
-    public User registerUser(String username, String email, String password) {
+    public User registerUser(String username, String email, String password, String description) { // Добавили параметр
         // Проверяем, не занят ли email
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("Email уже используется");
         }
 
-        // Создаем и сохраняем пользователя
-        User user = new User(username, email, password);
+        // Создаем пользователя
+        User user = new User(username, email, password,description);
+
+        // Устанавливаем описание перед сохранением!
+        user.setDescription(description);
+
         return userRepository.save(user);
     }
 

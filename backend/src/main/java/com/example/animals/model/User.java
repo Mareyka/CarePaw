@@ -46,10 +46,11 @@ public class User {
     // Конструкторы
     public User() {}
 
-    public User(String username, String email, String password) {
+    public User(String username, String email, String password, String description) {
         this.username = username;
         this.email = email;
         this.password = password;
+        this.description = description; // Теперь описание принимается!
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }

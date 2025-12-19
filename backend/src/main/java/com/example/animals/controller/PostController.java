@@ -1,5 +1,6 @@
 package com.example.animals.controller;
 
+import com.example.animals.dto.LikeSaveRequestDTO;
 import com.example.animals.dto.PostResponse;
 import com.example.animals.dto.PostResponseDTO;
 import com.example.animals.model.Place;
@@ -48,7 +49,6 @@ public class PostController {
         this.userRepository = userRepository;
     }
 
-
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> createPost(
             @RequestParam String title,
@@ -69,8 +69,7 @@ public class PostController {
 
         if (photo != null && !photo.isEmpty()) {
             String fileName = saveFile(photo);
-            String photoUrl = "/uploads/" + fileName;
-            post.setPhotoUrl(photoUrl);
+            post.setPhotoUrl(fileName);
         }
 
         Post saved = postRepository.save(post);
@@ -101,8 +100,7 @@ public class PostController {
 
         if (photo != null && !photo.isEmpty()) {
             String fileName = saveFile(photo);
-            String photoUrl = "/uploads/" + fileName;
-            post.setPhotoUrl(photoUrl);
+            post.setPhotoUrl(fileName);
         }
 
         Post saved = postRepository.save(post);
@@ -316,6 +314,8 @@ public class PostController {
         dto.setPhotoUrl(post.getPhotoUrl());
         dto.setUserId(post.getUserId());
 
+        System.out.println("Setting photoUrl to DTO: " + post.getPhotoUrl());
+
         User author = userRepository.findById(post.getUserId()).orElse(null);
         dto.setUsername(author != null ? author.getUsername() : "Unknown");
 
@@ -335,5 +335,79 @@ public class PostController {
         }
 
         return dto;
+    }
+
+    @PostMapping("/likes")
+    public ResponseEntity<Void> addLikeWithBody(
+            @RequestBody LikeSaveRequestDTO request) {
+
+        Long postId = request.getPostId();
+        Long userId = request.getUserId();
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        // Проверяем, не лайкнул ли уже пользователь
+        if (postLikeRepository.existsByPostIdAndUserId(postId, userId)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        PostLike like = new PostLike(post, user);
+        postLikeRepository.save(like);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/likes")
+    public ResponseEntity<Void> removeLikeWithBody(
+            @RequestBody LikeSaveRequestDTO request) {
+
+        Long postId = request.getPostId();
+        Long userId = request.getUserId();
+
+        PostLike like = postLikeRepository.findByPostIdAndUserId(postId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Like not found"));
+
+        postLikeRepository.delete(like);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/saves")
+    public ResponseEntity<Void> addSaveWithBody(
+            @RequestBody LikeSaveRequestDTO request) {
+
+        Long postId = request.getPostId();
+        Long userId = request.getUserId();
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        // Проверяем, не сохранил ли уже пользователь
+        if (postSaveRepository.existsByPostIdAndUserId(postId, userId)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        PostSave save = new PostSave(post, user);
+        postSaveRepository.save(save);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/saves")
+    public ResponseEntity<Void> removeSaveWithBody(
+            @RequestBody LikeSaveRequestDTO request) {
+
+        Long postId = request.getPostId();
+        Long userId = request.getUserId();
+
+        PostSave save = postSaveRepository.findByPostIdAndUserId(postId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Save not found"));
+
+        postSaveRepository.delete(save);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -5,7 +5,8 @@ import java.time.Instant;
 public class PostResponseDTO {
     private Long id;
     private String title;
-    private String photoUrl;
+    private String photoUrl; // Имя файла из БД
+    private String fullPhotoUrl; // Полный URL
     private Long userId;
     private String username;
     private String placeName;
@@ -16,9 +17,10 @@ public class PostResponseDTO {
     private boolean isLikedByCurrentUser;
     private boolean isSavedByCurrentUser;
 
-    // Конструкторы
+    // Пустой конструктор для Jackson
     public PostResponseDTO() {}
 
+    // Конструктор с формированием полного URL
     public PostResponseDTO(Long id, String title, String photoUrl, Long userId, String username,
                            String placeName, boolean isUrgently, Instant createdAt,
                            int likesCount, int savesCount, boolean isLikedByCurrentUser,
@@ -35,104 +37,72 @@ public class PostResponseDTO {
         this.savesCount = savesCount;
         this.isLikedByCurrentUser = isLikedByCurrentUser;
         this.isSavedByCurrentUser = isSavedByCurrentUser;
+        this.fullPhotoUrl = buildFullPhotoUrl(photoUrl);
     }
 
-    // Геттеры
-    public Long getId() {
-        return id;
-    }
+    // Геттеры и сеттеры
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public String getTitle() {
-        return title;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public String getPhotoUrl() {
-        return photoUrl;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPlaceName() {
-        return placeName;
-    }
-
-    public boolean isUrgently() {
-        return isUrgently;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public int getLikesCount() {
-        return likesCount;
-    }
-
-    public int getSavesCount() {
-        return savesCount;
-    }
-
-    public boolean isLikedByCurrentUser() {
-        return isLikedByCurrentUser;
-    }
-
-    public boolean isSavedByCurrentUser() {
-        return isSavedByCurrentUser;
-    }
-
-    // Сеттеры
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
+    public String getPhotoUrl() { return photoUrl; }
     public void setPhotoUrl(String photoUrl) {
         this.photoUrl = photoUrl;
+        this.fullPhotoUrl = buildFullPhotoUrl(photoUrl);
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    // ВАЖНО: Геттер для полного URL должен быть на фронтенде
+    public String getFullPhotoUrl() {
+        if (fullPhotoUrl != null) {
+            return fullPhotoUrl;
+        }
+        return buildFullPhotoUrl(photoUrl);
     }
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+    // Не нужен сеттер для fullPhotoUrl, он генерируется автоматически
 
-    public void setPlaceName(String placeName) {
-        this.placeName = placeName;
-    }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
-    public void setUrgently(boolean urgently) {
-        isUrgently = urgently;
-    }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
+    public String getPlaceName() { return placeName; }
+    public void setPlaceName(String placeName) { this.placeName = placeName; }
 
-    public void setLikesCount(int likesCount) {
-        this.likesCount = likesCount;
-    }
+    public boolean isUrgently() { return isUrgently; }
+    public void setUrgently(boolean urgently) { isUrgently = urgently; }
 
-    public void setSavesCount(int savesCount) {
-        this.savesCount = savesCount;
-    }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public void setLikedByCurrentUser(boolean likedByCurrentUser) {
-        isLikedByCurrentUser = likedByCurrentUser;
-    }
+    public int getLikesCount() { return likesCount; }
+    public void setLikesCount(int likesCount) { this.likesCount = likesCount; }
 
-    public void setSavedByCurrentUser(boolean savedByCurrentUser) {
-        isSavedByCurrentUser = savedByCurrentUser;
+    public int getSavesCount() { return savesCount; }
+    public void setSavesCount(int savesCount) { this.savesCount = savesCount; }
+
+    public boolean isLikedByCurrentUser() { return isLikedByCurrentUser; }
+    public void setLikedByCurrentUser(boolean likedByCurrentUser) { isLikedByCurrentUser = likedByCurrentUser; }
+
+    public boolean isSavedByCurrentUser() { return isSavedByCurrentUser; }
+    public void setSavedByCurrentUser(boolean savedByCurrentUser) { isSavedByCurrentUser = savedByCurrentUser; }
+
+    // Приватный метод для построения полного URL
+    private String buildFullPhotoUrl(String photoUrl) {
+        if (photoUrl == null || photoUrl.isEmpty()) {
+            return null;
+        }
+
+        // Если уже полный URL, возвращаем как есть
+        if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
+            return photoUrl;
+        }
+
+        // Формируем полный URL
+        return "http://localhost:8080/api/images/posts/" + photoUrl;
     }
 
     @Override
@@ -141,6 +111,7 @@ public class PostResponseDTO {
                 "id=" + id +
                 ", title='" + title + '\'' +
                 ", photoUrl='" + photoUrl + '\'' +
+                ", fullPhotoUrl='" + getFullPhotoUrl() + '\'' +
                 ", userId=" + userId +
                 ", username='" + username + '\'' +
                 ", placeName='" + placeName + '\'' +

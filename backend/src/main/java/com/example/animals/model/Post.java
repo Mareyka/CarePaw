@@ -91,6 +91,15 @@ public class Post {
         this.createdAt = createdAt;
     }
 
+    // Геттер для полного URL
+    @Transient
+    public String getFullPhotoUrl() {
+        if (this.photoUrl == null || this.photoUrl.isEmpty()) {
+            return null;
+        }
+        return "http://localhost:8080/api/images/posts/" + this.photoUrl; // Добавили /api/
+    }
+
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostLike> likes = new ArrayList<>();
 
