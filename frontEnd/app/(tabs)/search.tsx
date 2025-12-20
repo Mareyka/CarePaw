@@ -1,30 +1,65 @@
-import UserCard from "@/components/userCard";
 import { theme } from "@/constants/theme";
 import SearchInput from "@/shared/ui/search-input";
 import Header from "@/components/Header";
 import { Typography } from "@/shared/ui/Typography";
-import { Pressable, ScrollView, StyleSheet, View, ActivityIndicator } from "react-native";
-import { useRandomUsers } from "@/hooks/useUsers";
+import { Pressable, ScrollView, StyleSheet, View, ActivityIndicator, Text, Image, TouchableOpacity } from "react-native";
+import { useSearchUsers, useRandomUsers } from "@/hooks/useUsers";
+import { useState } from "react";
+import { useRouter } from "expo-router";
+import { GlobalStyles } from "@/constants/theme";
 
 export default function SearchScreen() {
-  const { users, isLoading, error } = useRandomUsers();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { users: searchUsers, isLoading: isSearchLoading, error: searchError } = useSearchUsers(searchQuery);
+  const { users: randomUsers, isLoading: isRandomLoading, error: randomError } = useRandomUsers();
+  const router = useRouter();
+
+  const isSearching = searchQuery.trim().length > 0;
+  const users = isSearching ? searchUsers : randomUsers;
+  const isLoading = isSearching ? isSearchLoading : isRandomLoading;
+  const error = isSearching ? searchError : randomError;
+
+  const handleUserPress = (userId: number) => {
+    router.push({
+      pathname: "/user/[id]",
+      params: { id: userId.toString() }
+    });
+  };
+
+  const getAvatarUrl = (photo?: string | null) => {
+    if (photo && photo.trim() !== '') {
+      if (photo.startsWith('http://') || photo.startsWith('https://')) {
+        return photo;
+      }
+      // return `http://10.0.2.2:8080/api/images/avatars/${photo}`;
+      return `http://localhost:8080/api/images/avatars/${photo}`;
+    }
+    return null;
+  };
 
   return (
     <View style={styles.container}>
       <Header />
 
       <View style={styles.searchInputContainer}>
-        <SearchInput />
+        <SearchInput 
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Поиск пользователей..."
+        />
       </View>
 
       <Typography type="title" style={styles.sectionTitle}>
-        Пользователи
+        {isSearching ? "Результаты поиска" : "Пользователи"}
       </Typography>
 
       {isLoading && (
-        <Typography type="label" style={{ textAlign: "center" }}>
-          Загружаем пользователей…
-        </Typography>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.color.background.darkGreen} />
+          <Typography type="label" style={{ textAlign: "center", marginTop: 12 }}>
+            {isSearching ? "Поиск пользователей…" : "Загружаем пользователей…"}
+          </Typography>
+        </View>
       )}
 
       {error && (
@@ -33,21 +68,59 @@ export default function SearchScreen() {
         </Typography>
       )}
 
-      {!isLoading && !error && (
+      {!isLoading && !error && isSearching && users.length === 0 && (
+        <Typography type="label" style={{ textAlign: "center", marginTop: 20 }}>
+          Пользователи не найдены
+        </Typography>
+      )}
+
+      {!isLoading && !error && users.length > 0 && (
         <ScrollView
           style={styles.scrollerWrapper}
           contentContainerStyle={styles.scroller}
           horizontal
           showsHorizontalScrollIndicator={false}
         >
-          {users.map((user) => (
-            <View key={user.id}>
-              <UserCard
-                username={user.username}
-                role={user.role}
-                width={140}
-              />
-            </View>
+          {users.map((user, index) => (
+            <TouchableOpacity
+              key={user.id}
+              style={[styles.userCard, getCardStyle(index)]}
+              onPress={() => handleUserPress(user.id)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.user_img}>
+                {getAvatarUrl(user.photo) ? (
+                  <Image 
+                    source={{ uri: getAvatarUrl(user.photo)! }}
+                    style={styles.userAvatar}
+                    defaultSource={require('@/assets/images/default_avatar.png')}
+                  />
+                ) : (
+                  <View style={[
+                    styles.defaultAvatar,
+                    user.role === 'CLINIC' ? styles.clinicAvatar :
+                    user.role === 'SHELTER' ? styles.shelterAvatar :
+                    styles.userAvatarDefault
+                  ]}>
+                    <Text style={styles.avatarInitial}>
+                      {user.username.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              
+              <Text style={[GlobalStyles.textSpecial, styles.username]} numberOfLines={1}>
+                {user.username}
+              </Text>
+              
+              {(user.role === 'CLINIC' || user.role === 'SHELTER') && (
+                <View style={styles.roleBadge}>
+                  <Text style={styles.roleText}>
+                    {user.role === 'CLINIC' ? 'Ветклиника' : 'Приют'}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
           ))}
         </ScrollView>
       )}
@@ -83,21 +156,97 @@ export default function SearchScreen() {
     </View>
   );
 }
-const styles = StyleSheet.create({
+const getCardStyle = (index: number) => {
+  return index % 2 === 0 
+    ? GlobalStyles.bgPrimary 
+    : GlobalStyles.bgQuaternary;
+};
 
+const styles = StyleSheet.create({
   searchInputContainer: {
     marginTop: 16,
     paddingHorizontal:12,
   },
-    scrollerWrapper: {
-      marginTop: 16,
-      paddingHorizontal:12,
-      maxHeight: 180,
-    },
-    scroller: {
-      flexDirection: "row",
-      gap: 16,
-    },
+  centerContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  scrollerWrapper: {
+    marginTop: 16,
+    paddingHorizontal:12,
+    maxHeight: 180,
+  },
+  scroller: {
+    flexDirection: "row",
+    gap: 16,
+    paddingRight: 12,
+  },
+  userCard: {
+    height: 124,
+    width: 124,
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    marginRight: 12,
+    position: 'relative',
+  },
+  user_img: {
+    height: 76,
+    width: 76,
+    borderRadius: 36,
+    backgroundColor: '#D0C7BA',
+    marginBottom: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  userAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 36,
+  },
+  defaultAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clinicAvatar: {
+    backgroundColor: '#4E5B3F',
+  },
+  shelterAvatar: {
+    backgroundColor: '#697C44',
+  },
+  userAvatarDefault: {
+    backgroundColor: '#D0C7BA',
+  },
+  avatarInitial: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  username: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    maxWidth: 100,
+  },
+  roleBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(78, 91, 63, 0.9)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  roleText: {
+    fontSize: 8,
+    color: 'white',
+    fontWeight: 'bold',
+  },
     bedImage: {
       width: 103,
       height: 103,

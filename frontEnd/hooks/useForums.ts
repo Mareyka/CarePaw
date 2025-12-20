@@ -1,34 +1,18 @@
-import { useEffect, useState } from "react";
-import { ForumCategory, Forum } from "@/types/forum";
-import { apiService, API_URL } from "@/api/service";
+import { useEffect, useState, useCallback } from "react";
+import { ChatSummary } from "@/types/forum";
+import { apiService, API_URL, API_URL_WITHOUT_API } from "@/api/service";
 
-const fetchForumCategories = async (): Promise<ForumCategory[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        {
-          id: "1",
-          title: "Дрессировка",
-          forums: [
-            { id: "1", title: "Когда начинать дресс...", lastMessage: "Последнее сообщение", recipientId: 1 },
-            { id: "2", title: "Основы дрессировки", lastMessage: "Последнее сообщение", recipientId: 2 },
-            { id: "3", title: "Техники дрессировки", lastMessage: "Последнее сообщение", recipientId: 3 },
-          ],
-        },
-        {
-          id: "2",
-          title: "Вакцинация",
-          forums: [
-            { id: "4", title: "Стоит ли вакцинировать", lastMessage: "Последнее сообщение", recipientId: 3  },
-            { id: "5", title: "Прививка от клещей", lastMessage: "Последнее сообщение", recipientId: 3  },
-          ],
-        },
-      ]);
-    }, 100);
-  });
+const getAvatarUrl = (photo?: string | null): string | undefined => {
+  if (!photo || photo.trim() === '') {
+    return undefined;
+  }
+  if (photo.startsWith('http://') || photo.startsWith('https://')) {
+    return photo;
+  }
+  return `${API_URL_WITHOUT_API}/api/images/avatars/${photo}`;
 };
 
-const fetchChats = async (): Promise<Forum[]> => {
+const fetchChats = async (): Promise<ChatSummary[]> => {
   try {
     const currentUser = apiService.getCurrentUserFromMemory();
     if (!currentUser) throw new Error("Пользователь не авторизован");
@@ -37,12 +21,11 @@ const fetchChats = async (): Promise<Forum[]> => {
     if (!resp.ok) throw new Error(`Ошибка сервера: ${resp.status}`);
     const data = await resp.json();
 
-    // адаптируем под тип Forum
-    const chats: Forum[] = data.map((c: any) => ({
+    const chats: ChatSummary[] = data.map((c: any) => ({
       id: String(c.id),
       title: c.title || "Без имени",
       lastMessage: c.lastMessage || "",
-      avatarUri: c.avatarUri || undefined,
+      avatarUri: getAvatarUrl(c.avatarUri),
       recipientId: c.recipientId
     }));
 
@@ -53,31 +36,24 @@ const fetchChats = async (): Promise<Forum[]> => {
   }
 };
 
-export const useForums = (mode: "forums" | "chats") => {
-  const [categories, setCategories] = useState<ForumCategory[]>([]);
-  const [chats, setChats] = useState<Forum[]>([]);
+export const useForums = () => {
+  const [chats, setChats] = useState<ChatSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      if (mode === "forums") {
-        const data = await fetchForumCategories();
-        setCategories(data);
-      } else {
-        const data = await fetchChats();
-        setChats(data);
-        console.log(data);
-      }
-      setIsLoading(false);
-    };
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    const data = await fetchChats();
+    setChats(data);
+    setIsLoading(false);
+  }, []);
 
+  useEffect(() => {
     loadData();
-  }, [mode]);
+  }, [loadData]);
 
   return {
-    categories,
     chats,
     isLoading,
+    refreshChats: loadData,
   };
 };

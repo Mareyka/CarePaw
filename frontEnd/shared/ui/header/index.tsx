@@ -3,7 +3,7 @@ import SearchHeaderRightIcon from "@/assets/icons/SearchHeaderRightIcon";
 import { ArrowLeftIcon } from "@/assets/icons/ArrowLeftIcon";
 import { theme } from "@/constants/theme";
 import { Typography } from "@/shared/ui/Typography";
-import { useGlobalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -87,33 +87,16 @@ export function buildSearchHeaderOptions(props?: SearchHeaderNavProps) {
 type ForumChatHeaderNavProps = {};
 
 export function ForumChatHeaderNav({}: ForumChatHeaderNavProps) {
-  const router = useRouter();
-  const { mode } = useGlobalSearchParams<{ mode?: string }>();
-  const isForums = (mode as string) !== "chats";
-  const isChats = !isForums;
   return (
     <View style={styles.searchHeaderContainer}>
       <SearchHeaderLeftIcon width={33} height={34} />
 
       <View style={styles.navCenter}>
-        <Pressable
-          onPress={() => router.setParams({ mode: "forums" })}
-          hitSlop={8}
-          style={[styles.navButton, isForums ? styles.navButtonActive : null]}
-        >
-          <Text style={[styles.navText, isForums ? styles.navTextActive : null]}>
-            Форумы
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => router.setParams({ mode: "chats" })}
-          hitSlop={8}
-          style={[styles.navButton, isChats ? styles.navButtonActive : null]}
-        >
-          <Text style={[styles.navText, isChats ? styles.navTextActive : null]}>
+        <View style={[styles.navButton, styles.navButtonActive]}>
+          <Text style={[styles.navText, styles.navTextActive]}>
             Чаты
           </Text>
-        </Pressable>
+        </View>
       </View>
 
       <SearchHeaderRightIcon width={34} height={31} />

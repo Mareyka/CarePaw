@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 
 const API_BASE_URL = 'http://localhost:8080/api';
+// const API_BASE_URL = 'http://10.0.2.2:8080/api';
 
 // Иконка лайка 
 const LikeIcon = ({ filled = false }) => (
@@ -89,7 +90,8 @@ const Post = ({
       return postData.photoUrl;
     }
     
-    return `http://localhost:8080/api/images/posts/${postData.photoUrl}`;
+    return `http://10.0.2.2:8080/api/images/posts/${postData.photoUrl}`;
+    // return `http://localhost:8080/api/images/posts/${postData.photoUrl}`;
   };
 
   // Функция для получения URL аватара пользователя
@@ -101,7 +103,8 @@ const Post = ({
       if (postData.userPhoto) {
         const url = postData.userPhoto.startsWith('http://') || postData.userPhoto.startsWith('https://')
           ? postData.userPhoto
-          : `http://localhost:8080/uploads/${postData.userPhoto}`;
+          : `http://10.0.2.2:8080/uploads/${postData.userPhoto}`;
+          // : `http://localhost:8080/uploads/${postData.userPhoto}`;
         setUserAvatarUrl(url);
         return;
       }
@@ -118,7 +121,8 @@ const Post = ({
         if (userData.photo) {
           const url = userData.photo.startsWith('http://') || userData.photo.startsWith('https://')
             ? userData.photo
-            : `http://localhost:8080/uploads/${userData.photo}`;
+            : `http://10.0.2.2:8080/uploads/${userData.photo}`;
+            // : `http://localhost:8080/uploads/${userData.photo}`;
           setUserAvatarUrl(url);
         }
       }

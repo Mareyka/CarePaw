@@ -37,7 +37,7 @@ public class PostController {
     private final PostSaveRepository postSaveRepository;
     private final UserRepository userRepository;
 
-    private static final String UPLOAD_DIR = "uploads";
+    private static final String UPLOAD_DIR = "uploads/images/posts";
 
     public PostController(PostRepository postRepository, PlaceRepository placeRepository,
                           PostLikeRepository postLikeRepository, PostSaveRepository postSaveRepository,

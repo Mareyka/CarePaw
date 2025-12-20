@@ -28,6 +28,7 @@ import { getPetsByUserId, resolvePetPhotoUrl } from '@/api/pets';
 import PostThumbnail from '@/components/PostThumbnail';
 
 const API_URL = 'http://localhost:8080/api';
+// const API_URL = 'http://10.0.2.2:8080/api';
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3; 
 
@@ -268,7 +269,8 @@ const fetchTabData = async (tab: TabType) => {
                     <Image 
                       source={
                         profileUser.photo 
-                          ? { uri: `http://localhost:8080/api/images/avatars/${profileUser.photo}?t=${Date.now()}` } 
+                          ? { uri: `http://10.0.2.2:8080/api/images/avatars/${profileUser.photo}?t=${Date.now()}` }
+                          // ? { uri: `http://localhost:8080/api/images/avatars/${profileUser.photo}?t=${Date.now()}` } 
                           : require('@/assets/images/default_avatar.png')
                       } 
                       style={styles.avatarImage}
