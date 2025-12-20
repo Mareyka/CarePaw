@@ -90,19 +90,8 @@ public class PostResponseDTO {
     public boolean isSavedByCurrentUser() { return isSavedByCurrentUser; }
     public void setSavedByCurrentUser(boolean savedByCurrentUser) { isSavedByCurrentUser = savedByCurrentUser; }
 
-    // Приватный метод для построения полного URL
     private String buildFullPhotoUrl(String photoUrl) {
-        if (photoUrl == null || photoUrl.isEmpty()) {
-            return null;
-        }
-
-        // Если уже полный URL, возвращаем как есть
-        if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
-            return photoUrl;
-        }
-
-        // Формируем полный URL
-        return "http://localhost:8080/api/images/posts/" + photoUrl;
+        return null;
     }
 
     @Override

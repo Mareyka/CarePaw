@@ -97,4 +97,25 @@ public class UserService {
         System.out.println("Файл физически сохранен: " + target);
         return fileName;
     }
+
+    public List<User> searchUsersByUsername(String query, Long excludeId) {
+        if (query == null || query.trim().isEmpty()) {
+            return List.of();
+        }
+        List<User> users = userRepository.searchByUsernameContaining(query.trim());
+        if (excludeId != null) {
+            final Long excludeIdFinal = excludeId;
+            users = users.stream()
+                    .filter(user -> {
+                        Long userId = user.getId();
+                        boolean shouldExclude = userId != null && userId.equals(excludeIdFinal);
+                        if (shouldExclude) {
+                            System.out.println("Excluding user: " + userId + " (username: " + user.getUsername() + ")");
+                        }
+                        return !shouldExclude;
+                    })
+                    .collect(java.util.stream.Collectors.toList());
+        }
+        return users;
+    }
 }

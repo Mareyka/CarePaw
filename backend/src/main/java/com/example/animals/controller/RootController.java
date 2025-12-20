@@ -83,6 +83,29 @@ public class RootController {
     }
 
 
+    @GetMapping("/users/search")
+    public ResponseEntity<List<UserResponse>> searchUsers(
+            @RequestParam String query,
+            @RequestParam(required = false) Long excludeId) {
+        System.out.println("Search request - query: " + query + ", excludeId: " + excludeId);
+        List<User> users = userService.searchUsersByUsername(query, excludeId);
+        System.out.println("Found users: " + users.size() + ", IDs: " + users.stream().map(User::getId).toList());
+        
+        List<UserResponse> userResponses = users.stream()
+                .map(user -> new UserResponse(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        user.getRole(),
+                        user.getDescription(),
+                        user.getPhoto(),
+                        user.getCreatedAt()
+                ))
+                .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(userResponses);
+    }
+
     @GetMapping("/users/{id}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
         return userService.getUserById(id)

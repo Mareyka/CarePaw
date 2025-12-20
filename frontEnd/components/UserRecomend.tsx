@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { GlobalStyles } from '../constants/theme';
 
 const API_BASE_URL = 'http://localhost:8080/api';
+// const API_BASE_URL = 'http://10.0.2.2:8080/api';
 
 // Тип для пользователя
 interface User {
@@ -114,6 +115,7 @@ const UserRecomend = () => {
         return photo;
       }
       // Если это имя файла
+      // return `http://10.0.2.2:8080/uploads/${photo}`;
       return `http://localhost:8080/uploads/${photo}`;
     }
     // Возвращаем дефолтный цветной градиент

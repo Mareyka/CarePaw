@@ -18,6 +18,7 @@ import UserRecomend from '../../components/UserRecomend';
 import { GlobalStyles } from '../../constants/theme';
 
 const API_BASE_URL = 'http://localhost:8080/api';
+// const API_BASE_URL = 'http://10.0.2.2:8080/api';
 
 // Обновляем тип для поста чтобы соответствовать API
 type PostType = {
@@ -80,7 +81,7 @@ export default function HomeScreen() {
         id: post.id,
         title: post.title || 'Без названия',
         photoUrl: post.photoUrl || '',
-        fullPhotoUrl: post.fullPhotoUrl || post.photoUrl,
+        fullPhotoUrl: post.fullPhotoUrl || undefined,
         userId: post.userId || 0,
         username: post.username || 'Неизвестный',
         placeName: post.placeName || 'Местоположение не указано',

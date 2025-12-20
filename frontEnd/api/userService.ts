@@ -28,4 +28,19 @@ export const userService = {
     }
     return await response.json();
   },
+
+  async search(query: string, excludeId?: number): Promise<User[]> {
+    if (!query || query.trim().length === 0) {
+      return [];
+    }
+    let url = `${API_URL}/users/search?query=${encodeURIComponent(query.trim())}`;
+    if (excludeId) {
+      url += `&excludeId=${excludeId}`;
+    }
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Ошибка при поиске пользователей: ${response.status}`);
+    }
+    return await response.json();
+  },
 };

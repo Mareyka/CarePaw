@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 
 const API_URL = 'http://localhost:8080/api';
+// const API_URL = 'http://10.0.2.2:8080/api';
 
 export type Pet = {
   id: number;

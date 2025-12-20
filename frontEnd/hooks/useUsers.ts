@@ -26,3 +26,40 @@ export const useRandomUsers = () => {
 
   return { users, isLoading, error };
 };
+
+export const useSearchUsers = (query: string) => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const searchUsers = async () => {
+      if (!query || query.trim().length === 0) {
+        setUsers([]);
+        setError(null);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const currentUser = apiService.getCurrentUserFromMemory();
+        const excludeId = currentUser?.id;
+        console.log("Searching with excludeId:", excludeId, "currentUser:", currentUser);
+        const data = await userService.search(query, excludeId);
+        console.log("Search results:", data.map(u => ({ id: u.id, username: u.username })));
+        setUsers(data);
+      } catch (err: any) {
+        setError(err.message);
+        setUsers([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const timeoutId = setTimeout(searchUsers, 300);
+    return () => clearTimeout(timeoutId);
+  }, [query]);
+
+  return { users, isLoading, error };
+};
