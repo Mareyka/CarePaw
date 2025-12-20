@@ -25,7 +25,6 @@ import TabBar from '@/components/TabBar';
 import Button from '@/components/Button';
 import AppointmentSignUp from '../AppointmentSignUp';
 import { getPetsByUserId, resolvePetPhotoUrl } from '@/api/pets';
-import { getAllShelterAnimals, resolveShelterAnimalPhotoUrl, ShelterAnimal } from '@/api/shelter-animals';
 import PostThumbnail from '@/components/PostThumbnail';
 
 const API_URL = 'http://localhost:8080/api';
@@ -46,7 +45,6 @@ export default function UserProfile() {
   
   const [profileUser, setProfileUser] = useState<UserResponse | null>(null);
   const [pets, setPets] = useState<any[]>([]);
-  const [shelterAnimals, setShelterAnimals] = useState<ShelterAnimal[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [posts, setPosts] = useState<UserPost[]>([]);
@@ -117,18 +115,6 @@ const handleUpdateProfile = async () => {
     }
   };
 
-  const fetchShelterAnimals = async () => {
-    try {
-      if (!id) return;
-      const all = await getAllShelterAnimals();
-      const shelterId = Number(id);
-      const list = all.filter((a) => Number(a.shelterId) === shelterId && !a.adopted);
-      setShelterAnimals(list);
-    } catch (error) {
-      console.error('Error loading shelter animals:', error);
-    }
-  };
-
   // Доступные типы вкладок
   type TabType = 'POSTS' | 'LIKES' | 'SAVED';
   const [activeTab, setActiveTab] = useState<TabType>('POSTS');
@@ -142,9 +128,8 @@ const handleUpdateProfile = async () => {
   useFocusEffect(
     React.useCallback(() => {
       if (!id) return;
-      if (profileUser?.role === 'SHELTER') fetchShelterAnimals();
-      else fetchPets();
-    }, [id, profileUser?.role])
+      fetchPets();
+    }, [id])
   );
 
 
@@ -169,8 +154,7 @@ const handleUpdateProfile = async () => {
         const subCounts = await apiService.getSubscriptionCounts(id as string);
         setCounts(subCounts);
         
-        if (userData?.role === 'SHELTER') await fetchShelterAnimals();
-        else await fetchPets();
+        await fetchPets();
 
         if (currentUser && currentUser.id.toString() !== id?.toString()) {
           const subStatus = await apiService.checkSubscription(id as string);
@@ -382,14 +366,19 @@ const fetchTabData = async (tab: TabType) => {
             </View>
 
             {/* --- СЕКЦИЯ ЖИВОТНЫХ --- */}
-  {!isClinic && !isShelter && (
+  {!isClinic && (
     <View style={styles.storyFeed}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {pets.map((pet) => (
           <TouchableOpacity
             key={pet.id}
             style={styles.storyItem}
-            onPress={() => router.push({ pathname: '/pet-passport', params: { petId: pet.id } })}
+            onPress={() =>
+              router.push({
+                pathname: '/pet-passport',
+                params: { petId: pet.id, ownerId: id, shelterOwner: isShelter ? 'true' : 'false' },
+              })
+            }
           >
             <View style={styles.petCircle}>
               <Image
@@ -408,42 +397,6 @@ const fetchTabData = async (tab: TabType) => {
           <TouchableOpacity
             style={styles.storyItem}
             onPress={() => router.push({ pathname: '/pet-passport', params: { mode: 'create' } })}
-          >
-            <View style={[styles.petCircle, styles.addPetCircle]}>
-              <Text style={styles.addPetPlus}>+</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
-    </View>
-  )}
-
-  {isShelter && (
-    <View style={styles.storyFeed}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {shelterAnimals.map((animal) => (
-          <TouchableOpacity
-            key={animal.id}
-            style={styles.storyItem}
-            onPress={() => router.push({ pathname: '/shelter-pet-card', params: { animalId: animal.id } })}
-          >
-            <View style={styles.petCircle}>
-              <Image
-                source={
-                  resolveShelterAnimalPhotoUrl(animal.photoUrl)
-                    ? { uri: resolveShelterAnimalPhotoUrl(animal.photoUrl) as string }
-                    : require('@/assets/images/default_avatar.png')
-                }
-                style={styles.petImage}
-              />
-            </View>
-          </TouchableOpacity>
-        ))}
-
-        {isOwnProfile && (
-          <TouchableOpacity
-            style={styles.storyItem}
-            onPress={() => router.push({ pathname: '/shelter-pet-card', params: { mode: 'create' } })}
           >
             <View style={[styles.petCircle, styles.addPetCircle]}>
               <Text style={styles.addPetPlus}>+</Text>

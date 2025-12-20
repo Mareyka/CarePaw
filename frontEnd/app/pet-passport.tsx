@@ -1,9 +1,10 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+﻿import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -24,22 +25,34 @@ import {
   uploadPetPhoto,
 } from '@/api/pets';
 
+type FormErrors = Partial<Record<keyof CreatePetInput, string>>;
+type TouchedMap = Partial<Record<keyof CreatePetInput, boolean>>;
+
 export default function PetPassport() {
   const router = useRouter();
   const { user: currentUser } = useAuth();
   const isShelterViewer = currentUser?.role?.toUpperCase() === 'SHELTER';
+  const isShelterOwner = currentUser?.role === 'SHELTER';
 
   const goBackSafe = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/');
   };
 
-  const { petId, mode } = useLocalSearchParams<{ petId?: string; mode?: string }>();
+  const { petId, mode, ownerId, shelterOwner } = useLocalSearchParams<{
+    petId?: string;
+    mode?: string;
+    ownerId?: string;
+    shelterOwner?: string;
+  }>();
   const isCreateMode = !petId || mode === 'create';
 
   const [pet, setPet] = useState<Pet | null>(null);
   const [loading, setLoading] = useState(!isCreateMode);
   const [isSaving, setIsSaving] = useState(false);
+
+  const isOwner = !!ownerId && currentUser?.id?.toString() === ownerId.toString();
+  const canViewCalendar = isOwner;
 
   const [photoAsset, setPhotoAsset] = useState<UploadPhotoAsset | null>(null);
   const [form, setForm] = useState<CreatePetInput>({
@@ -47,11 +60,70 @@ export default function PetPassport() {
     species: '',
     breed: '',
     dateOfBirth: '',
+    temperament: '',
+    careNotes: '',
+    isShelterPet: isShelterOwner,
     sterilized: false,
     vaccinated: false,
     dewormed: false,
     photoUrl: null,
   });
+
+  const isShelterPet = isCreateMode
+    ? isShelterOwner
+    : (pet?.isShelterPet ?? shelterOwner === 'true');
+
+  // ✅ Валидация
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<TouchedMap>({});
+
+  const markTouched = (field: keyof CreatePetInput) =>
+    setTouched((p) => ({ ...p, [field]: true }));
+
+  const validateForm = (data: CreatePetInput): FormErrors => {
+    const e: FormErrors = {};
+
+    const name = data.name?.trim() ?? '';
+    const species = data.species?.trim() ?? '';
+    const breed = data.breed?.trim() ?? '';
+    const dob = data.dateOfBirth?.trim() ?? '';
+
+    // Имя — обязательно
+    if (!name) e.name = 'Введите имя.';
+    else if (name.length < 2) e.name = 'Имя слишком короткое (мин. 2 символа).';
+
+    // Вид — обязательно
+    if (!species) e.species = 'Укажите вид (кот, собака и т.д.).';
+
+    // Порода — необязательная, но если ввели — пусть будет хотя бы 2 символа
+    if (breed && breed.length < 2) e.breed = 'Порода слишком короткая.';
+
+    // Дата рождения — необязательная, но если ввели — проверяем формат и реальность даты
+    if (dob) {
+      const re = /^\d{4}-\d{2}-\d{2}$/;
+      if (!re.test(dob)) {
+        e.dateOfBirth = 'Формат даты: YYYY-MM-DD';
+      } else {
+        const [y, m, d] = dob.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        const isReal =
+          dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+
+        if (!isReal) e.dateOfBirth = 'Такой даты не существует.';
+      }
+    }
+
+    return e;
+  };
+
+  const updateField = <K extends keyof CreatePetInput>(field: K, value: CreatePetInput[K]) => {
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      // если поле уже трогали — обновляем ошибки на лету
+      if (touched[field]) setErrors(validateForm(next));
+      return next;
+    });
+  };
 
   const visiblePhotoUri = useMemo(() => {
     if (photoAsset?.uri) return photoAsset.uri;
@@ -107,8 +179,20 @@ export default function PetPassport() {
       return;
     }
 
-    if (!form.name.trim()) {
-      Alert.alert('Проверьте данные', 'Поле "Имя" обязательно.');
+    // ✅ Проверяем всю форму
+    const nextErrors = validateForm(form);
+    setErrors(nextErrors);
+    // ✅ Помечаем поля как touched, чтобы ошибки сразу показались
+    setTouched((p) => ({
+      ...p,
+      name: true,
+      species: true,
+      breed: true,
+      dateOfBirth: true,
+    }));
+
+    if (Object.keys(nextErrors).length > 0) {
+      Alert.alert('Проверьте данные', 'Некоторые поля заполнены неверно.');
       return;
     }
 
@@ -120,6 +204,12 @@ export default function PetPassport() {
         species: form.species?.trim() || undefined,
         breed: form.breed?.trim() || undefined,
         dateOfBirth: form.dateOfBirth?.trim() || undefined,
+        temperament: form.temperament?.trim() || undefined,
+        careNotes: isShelterPet ? form.careNotes?.trim() || undefined : undefined,
+        isShelterPet,
+        vaccinated: isShelterPet ? !!form.vaccinated : undefined,
+        sterilized: isShelterPet ? !!form.sterilized : undefined,
+        dewormed: isShelterPet ? !!form.dewormed : undefined,
       });
 
       if (photoAsset?.uri) {
@@ -161,7 +251,8 @@ export default function PetPassport() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={styles.card}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.card}>
         <TouchableOpacity style={styles.close} onPress={goBackSafe}>
           <Text style={{ fontSize: 28, color: '#697c44' }}>×</Text>
         </TouchableOpacity>
@@ -192,63 +283,113 @@ export default function PetPassport() {
               <Text style={styles.label}>Имя *</Text>
               <TextInput
                 value={form.name}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, name: text }))}
+                onChangeText={(text) => updateField('name', text)}
+                onBlur={() => {
+                  markTouched('name');
+                  setErrors(validateForm(form));
+                }}
                 placeholder="Барсик"
                 placeholderTextColor="#9AA08F"
-                style={styles.input}
+                style={[styles.input, touched.name && errors.name ? styles.inputError : null]}
               />
+              {touched.name && errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
 
-              <Text style={styles.label}>Вид</Text>
+              <Text style={styles.label}>Вид *</Text>
               <TextInput
                 value={form.species}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, species: text }))}
+                onChangeText={(text) => updateField('species', text)}
+                onBlur={() => {
+                  markTouched('species');
+                  setErrors(validateForm(form));
+                }}
                 placeholder="кот"
                 placeholderTextColor="#9AA08F"
-                style={styles.input}
+                style={[styles.input, touched.species && errors.species ? styles.inputError : null]}
               />
+              {touched.species && errors.species ? (
+                <Text style={styles.errorText}>{errors.species}</Text>
+              ) : null}
 
               <Text style={styles.label}>Порода</Text>
               <TextInput
                 value={form.breed}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, breed: text }))}
+                onChangeText={(text) => updateField('breed', text)}
+                onBlur={() => {
+                  markTouched('breed');
+                  setErrors(validateForm(form));
+                }}
                 placeholder="дворовый"
                 placeholderTextColor="#9AA08F"
-                style={styles.input}
+                style={[styles.input, touched.breed && errors.breed ? styles.inputError : null]}
               />
+              {touched.breed && errors.breed ? <Text style={styles.errorText}>{errors.breed}</Text> : null}
 
               <Text style={styles.label}>Дата рождения</Text>
               <TextInput
                 value={form.dateOfBirth}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, dateOfBirth: text }))}
+                onChangeText={(text) => updateField('dateOfBirth', text)}
+                onBlur={() => {
+                  markTouched('dateOfBirth');
+                  setErrors(validateForm(form));
+                }}
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor="#9AA08F"
-                style={styles.input}
+                style={[
+                  styles.input,
+                  touched.dateOfBirth && errors.dateOfBirth ? styles.inputError : null,
+                ]}
                 autoCapitalize="none"
               />
+              {touched.dateOfBirth && errors.dateOfBirth ? (
+                <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
+              ) : null}
 
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Прививки</Text>
-                <Switch
-                  value={!!form.vaccinated}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, vaccinated: value }))}
-                />
-              </View>
+              <Text style={styles.label}>Характер</Text>
+              <TextInput
+                value={form.temperament}
+                onChangeText={(text) => updateField('temperament', text)}
+                placeholder="Дружелюбный, спокойный и т.д."
+                placeholderTextColor="#9AA08F"
+                style={styles.input}
+              />
 
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Стерилизован</Text>
-                <Switch
-                  value={!!form.sterilized}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, sterilized: value }))}
-                />
-              </View>
+              {isShelterPet && (
+                <>
+                  <Text style={styles.label}>Особенности содержания</Text>
+                  <TextInput
+                    value={form.careNotes}
+                    onChangeText={(text) => updateField('careNotes', text)}
+                    placeholder="Условия содержания, корм, режим"
+                    placeholderTextColor="#9AA08F"
+                    style={[styles.input, { height: 90 }]}
+                    multiline
+                  />
 
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Глистогонные</Text>
-                <Switch
-                  value={!!form.dewormed}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, dewormed: value }))}
-                />
-              </View>
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>Прививки</Text>
+                    <Switch
+                      value={!!form.vaccinated}
+                      onValueChange={(value) => setForm((prev) => ({ ...prev, vaccinated: value }))}
+                    />
+                  </View>
+
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>Стерилизован</Text>
+                    <Switch
+                      value={!!form.sterilized}
+                      onValueChange={(value) => setForm((prev) => ({ ...prev, sterilized: value }))}
+                    />
+                  </View>
+
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>Глистогонные</Text>
+                    <Switch
+                      value={!!form.dewormed}
+                      onValueChange={(value) => setForm((prev) => ({ ...prev, dewormed: value }))}
+                    />
+                  </View>
+                </>
+              )}
 
               <PrimaryButton
                 title={isSaving ? 'Сохранение…' : 'Сохранить'}
@@ -261,20 +402,44 @@ export default function PetPassport() {
         ) : (
           <>
             <View style={styles.infoBlock}>
-              <Text style={styles.infoText}>Вид: {pet?.species || 'Не указан'}</Text>
-              <Text style={styles.infoText}>Порода: {pet?.breed || 'Не указана'}</Text>
-              <Text style={styles.infoText}>Дата рождения: {pet?.dateOfBirth || 'Не указана'}</Text>
+              <Text style={styles.infoText}>
+                <Text style={styles.infoLabel}>Вид:</Text> {pet?.species || 'Не указан'}
+              </Text>
+              <Text style={styles.infoText}>
+                <Text style={styles.infoLabel}>Порода:</Text> {pet?.breed || 'Не указана'}
+              </Text>
+              <Text style={styles.infoText}>
+                <Text style={styles.infoLabel}>Дата рождения:</Text> {pet?.dateOfBirth || 'Не указана'}
+              </Text>
+              {!!pet?.temperament && (
+                <Text style={styles.infoText}>
+                  <Text style={styles.infoLabel}>Характер:</Text> {pet.temperament}
+                </Text>
+              )}
+              {isShelterPet && !!pet?.careNotes && (
+                <Text style={styles.infoText}>
+                  <Text style={styles.infoLabel}>Особенности содержания:</Text> {pet.careNotes}
+                </Text>
+              )}
             </View>
 
             <View style={styles.line} />
 
-            <View style={styles.infoBlock}>
-              <Text style={styles.infoText}>Прививки: {pet?.vaccinated ? '✅ Да' : '❌ Нет'}</Text>
-              <Text style={styles.infoText}>Стерилизован: {pet?.sterilized ? '✅ Да' : '❌ Нет'}</Text>
-              <Text style={styles.infoText}>Глистогонные: {pet?.dewormed ? '✅ Да' : '❌ Нет'}</Text>
-            </View>
+            {isShelterPet && (
+              <View style={styles.infoBlock}>
+                <Text style={styles.infoText}>
+                  <Text style={styles.infoLabel}>Прививки:</Text> {pet?.vaccinated ? '✅ Да' : '❌ Нет'}
+                </Text>
+                <Text style={styles.infoText}>
+                  <Text style={styles.infoLabel}>Стерилизован:</Text> {pet?.sterilized ? '✅ Да' : '❌ Нет'}
+                </Text>
+                <Text style={styles.infoText}>
+                  <Text style={styles.infoLabel}>Глистогонные:</Text> {pet?.dewormed ? '✅ Да' : '❌ Нет'}
+                </Text>
+              </View>
+            )}
 
-            {!isShelterViewer && (
+            {canViewCalendar && (
               <PrimaryButton
                 title="Календарь"
                 onPress={() => router.push({ pathname: '/pet-calendar', params: { petId: pet?.id } })}
@@ -284,7 +449,8 @@ export default function PetPassport() {
             )}
           </>
         )}
-      </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -292,9 +458,13 @@ export default function PetPassport() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   card: {
     backgroundColor: '#FFF8E8',
@@ -350,6 +520,11 @@ const styles = StyleSheet.create({
     color: '#4E5B3F',
     marginVertical: 1,
     fontSize: 16,
+    fontFamily: 'inglobal',
+  },
+  infoLabel: {
+    fontWeight: '700',
+    fontFamily: 'inglobal',
   },
   photoButton: {
     alignSelf: 'center',
@@ -372,6 +547,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 6,
     fontWeight: '600',
+    fontFamily: 'inglobal',
   },
   input: {
     borderWidth: 1,
@@ -382,6 +558,15 @@ const styles = StyleSheet.create({
     color: '#4E5B3F',
     backgroundColor: '#fff',
   },
+  // ✅ Стили ошибок
+  inputError: {
+    borderColor: '#D64545',
+  },
+  errorText: {
+    marginTop: 6,
+    color: '#D64545',
+    fontSize: 12,
+  },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -391,5 +576,6 @@ const styles = StyleSheet.create({
   switchLabel: {
     color: '#4E5B3F',
     fontSize: 16,
+    fontFamily: 'inglobal',
   },
 });

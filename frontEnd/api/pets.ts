@@ -10,6 +10,9 @@ export type Pet = {
   breed?: string | null;
   dateOfBirth?: string | null;
   photoUrl?: string | null;
+  temperament?: string | null;
+  careNotes?: string | null;
+  isShelterPet?: boolean;
   sterilized?: boolean;
   vaccinated?: boolean;
   dewormed?: boolean;
@@ -21,6 +24,9 @@ export type CreatePetInput = {
   breed?: string;
   dateOfBirth?: string; // YYYY-MM-DD
   photoUrl?: string | null;
+  temperament?: string;
+  careNotes?: string;
+  isShelterPet?: boolean;
   sterilized?: boolean;
   vaccinated?: boolean;
   dewormed?: boolean;
