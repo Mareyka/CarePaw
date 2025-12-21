@@ -33,16 +33,14 @@ public class RecommendationController {
             List<User> filteredUsers = allUsers.stream()
                     .filter(user -> {
                         if (currentUserId == null) {
-                            return true; // Если пользователь не авторизован, показываем всех
+                            return true;
                         }
                         return !user.getId().equals(currentUserId);
                     })
                     .collect(Collectors.toList());
 
-            // Выбираем пользователей для рекомендаций
             List<User> recommendedUsers = selectUsersForRecommendation(filteredUsers, limit);
 
-            // Преобразуем в существующий UserResponse
             List<UserResponse> response = recommendedUsers.stream()
                     .map(this::convertToUserResponse)
                     .collect(Collectors.toList());
@@ -60,7 +58,6 @@ public class RecommendationController {
             return users;
         }
 
-        // Разделяем пользователей по ролям
         List<User> organizations = users.stream()
                 .filter(u -> "CLINIC".equalsIgnoreCase(u.getRole()) || "SHELTER".equalsIgnoreCase(u.getRole()))
                 .collect(Collectors.toList());
@@ -69,11 +66,11 @@ public class RecommendationController {
                 .filter(u -> !"CLINIC".equalsIgnoreCase(u.getRole()) && !"SHELTER".equalsIgnoreCase(u.getRole()))
                 .collect(Collectors.toList());
 
-        // Сортируем по дате создания (новые пользователи выше)
+        // Сортируем по дате создания
         organizations.sort((u1, u2) -> u2.getCreatedAt().compareTo(u1.getCreatedAt()));
         regularUsers.sort((u1, u2) -> u2.getCreatedAt().compareTo(u1.getCreatedAt()));
 
-        // Формируем финальный список (50% организаций, 50% обычных пользователей)
+        // Формируем финальный список
         List<User> result = new ArrayList<>();
 
         int orgCount = Math.min(organizations.size(), limit / 2);
@@ -82,9 +79,7 @@ public class RecommendationController {
         result.addAll(organizations.subList(0, orgCount));
         result.addAll(regularUsers.subList(0, userCount));
 
-        // Если не набрали достаточно пользователей, добавляем остальных
         if (result.size() < limit) {
-            // Собираем всех пользователей, которых еще нет в результате
             Set<Long> existingIds = result.stream()
                     .map(User::getId)
                     .collect(Collectors.toSet());
@@ -107,7 +102,7 @@ public class RecommendationController {
         return new UserResponse(
                 user.getId(),
                 user.getUsername(),
-                user.getEmail(),  // Будем возвращать email (он уже есть в UserResponse)
+                user.getEmail(),
                 user.getRole(),
                 user.getDescription(),
                 user.getPhoto(),

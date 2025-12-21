@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Text, ActivityIndicator, RefreshControl, Alert } from 'react-native';
-import { useAuth } from '../../contexts/AuthContext'; // Импортируем useAuth
+import { useAuth } from '../../contexts/AuthContext';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 import Post from '../../components/Post';
@@ -24,7 +24,7 @@ type PostType = {
 };
 
 export default function UrgentScreen() {
-  const { user } = useAuth(); // Используем user из контекста
+  const { user } = useAuth(); 
   const [urgentPosts, setUrgentPosts] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

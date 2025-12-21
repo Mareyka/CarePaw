@@ -187,6 +187,7 @@ public class PostController {
         return ResponseEntity.ok(count);
     }
 
+
     @GetMapping("/{postId}/likes/check")
     public ResponseEntity<Boolean> checkIfLiked(
             @PathVariable Long postId,

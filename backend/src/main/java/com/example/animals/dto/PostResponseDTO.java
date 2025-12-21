@@ -5,8 +5,8 @@ import java.time.Instant;
 public class PostResponseDTO {
     private Long id;
     private String title;
-    private String photoUrl; // Имя файла из БД
-    private String fullPhotoUrl; // Полный URL
+    private String photoUrl;
+    private String fullPhotoUrl;
     private Long userId;
     private String username;
     private String placeName;
@@ -17,7 +17,6 @@ public class PostResponseDTO {
     private boolean isLikedByCurrentUser;
     private boolean isSavedByCurrentUser;
 
-    // Пустой конструктор для Jackson
     public PostResponseDTO() {}
 
     // Конструктор с формированием полного URL
@@ -53,15 +52,12 @@ public class PostResponseDTO {
         this.fullPhotoUrl = buildFullPhotoUrl(photoUrl);
     }
 
-    // ВАЖНО: Геттер для полного URL должен быть на фронтенде
     public String getFullPhotoUrl() {
         if (fullPhotoUrl != null) {
             return fullPhotoUrl;
         }
         return buildFullPhotoUrl(photoUrl);
     }
-
-    // Не нужен сеттер для fullPhotoUrl, он генерируется автоматически
 
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }

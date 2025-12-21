@@ -3,7 +3,7 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
-import Button from '../../components/Button'; // Импортируем компонент
+import Button from '../../components/Button'; 
 import { GlobalStyles } from '../../constants/theme';
 
 const MapScreen = () => {
@@ -46,7 +46,7 @@ const MapScreen = () => {
             // Инициализация карты (Минск)
             var map = L.map('map').setView([53.9045, 27.5615], 12);
             
-            // Альтернативные бесплатные тайловые серверы
+            // Альтернативные серверы
             var cartoLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 subdomains: 'abcd',

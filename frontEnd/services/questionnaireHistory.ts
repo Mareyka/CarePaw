@@ -1,12 +1,11 @@
-// services/questionnaireHistory.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const QUESTIONNAIRE_HISTORY_KEY = '@questionnaire_history';
-const EXPIRATION_MINUTES = 2; // 2 минуты
+const EXPIRATION_MINUTES = 2; 
 
 export interface QuestionnaireHistoryItem {
   id: string;
-  date: string; // ISO string
+  date: string; 
   result: string;
   severity: 'low' | 'medium' | 'high';
   points: number;
@@ -19,7 +18,7 @@ export const saveQuestionnaireResult = async (
 ): Promise<void> => {
   try {
     const history = await getQuestionnaireHistory();
-    const id = Date.now().toString(); // Используем timestamp как ID
+    const id = Date.now().toString();
     const newItem = { ...result, id };
     
     // Добавляем новый результат в начало массива
@@ -28,7 +27,7 @@ export const saveQuestionnaireResult = async (
     // Сохраняем обновленную историю
     await AsyncStorage.setItem(QUESTIONNAIRE_HISTORY_KEY, JSON.stringify({
       data: history,
-      timestamp: Date.now() // Добавляем timestamp для проверки устаревания
+      timestamp: Date.now() 
     }));
     
     console.log('Questionnaire result saved:', newItem);
@@ -48,7 +47,7 @@ export const getQuestionnaireHistory = async (): Promise<QuestionnaireHistoryIte
     
     const parsed = JSON.parse(jsonValue);
     
-    // Проверяем, не устарели ли данные (больше 2 минут)
+    // Проверяем, не устарели ли данные
     const currentTime = Date.now();
     const storedTime = parsed.timestamp;
     const minutesDiff = (currentTime - storedTime) / (1000 * 60);

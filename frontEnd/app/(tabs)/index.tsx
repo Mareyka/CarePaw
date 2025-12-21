@@ -38,7 +38,7 @@ type PostType = {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user } = useAuth(); // Используем user из контекста
+  const { user } = useAuth(); 
   const [posts, setPosts] = useState<PostType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -51,7 +51,6 @@ export default function HomeScreen() {
     try {
       console.log('Fetching posts from API...');
       
-      // Подготавливаем заголовки
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
@@ -142,9 +141,8 @@ export default function HomeScreen() {
 
   // Загружаем посты при изменении user
   useEffect(() => {
-    // Не ждем загрузки - можно сразу загружать посты
     loadPosts();
-  }, [user?.id]); // Перезагружаем посты при изменении ID пользователя
+  }, [user?.id]); 
 
   if (loading && posts.length === 0) {
     return (

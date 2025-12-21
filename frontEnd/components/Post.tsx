@@ -78,7 +78,7 @@ const Post = ({
   // Функция для получения правильного URL изображения поста
   const getImageUrl = () => {
     if (!postData?.photoUrl) {
-      return 'https://via.placeholder.com/400x200?text=No+Image';
+      return;
     }
     
     if (postData.fullPhotoUrl) {
@@ -124,15 +124,12 @@ const Post = ({
       }
     } catch (error) {
       console.log('Could not fetch user avatar:', error);
-      // Используем заглушку
-      setUserAvatarUrl('https://via.placeholder.com/24');
     }
   };
 
   // Функция перехода на профиль пользователя
   const navigateToUserProfile = () => {
     if (postData?.userId) {
-      console.log('Navigating to user profile:', postData.userId);
       router.push({
         pathname: '/user/[id]',
         params: { id: postData.userId.toString() }
@@ -142,7 +139,6 @@ const Post = ({
     }
   };
 
-  // Инициализируем состояния из postData
   useEffect(() => {
     if (postData) {
       setLiked(postData.likedByCurrentUser || false);
@@ -150,7 +146,6 @@ const Post = ({
       setSaved(postData.savedByCurrentUser || false);
       setImageError(false);
       
-      // Пробуем получить аватар пользователя
       fetchUserAvatar();
     }
   }, [postData]);
@@ -213,7 +208,6 @@ const Post = ({
       setLoadingSave(true);
       const newSaved = !saved;
       
-      // Оптимистичное обновление UI
       setSaved(newSaved);
       
       const url = `${API_BASE_URL}/posts/${postData.id}/save`;
@@ -262,10 +256,8 @@ const Post = ({
 
   return (
     <View style={styles.container}>
-      {/* Шапка поста с пользователем */}
       <View style={styles.actionsContainer}>
         <View style={styles.leftActions}>
-          {/* Аватар пользователя */}
           <TouchableOpacity onPress={navigateToUserProfile}>
             <Image 
               source={{ 
@@ -276,13 +268,11 @@ const Post = ({
               resizeMode="cover"
               defaultSource={require('@/assets/images/default_avatar.png')}
               onError={() => {
-                // Если не удалось загрузить аватар, используем заглушку
                 setUserAvatarUrl('https://via.placeholder.com/24');
               }}
             />
           </TouchableOpacity>
           
-          {/* Имя пользователя - теперь кликабельное */}
           <TouchableOpacity onPress={navigateToUserProfile}>
             <Text style={styles.usernameText}>{username}</Text>
           </TouchableOpacity>
@@ -295,7 +285,6 @@ const Post = ({
         </View>
       </View>
 
-      {/* Изображение поста */}
       <Image 
         source={{ 
           uri: imageUrl,
@@ -304,7 +293,7 @@ const Post = ({
         style={styles.image}
         resizeMode="cover"
         onError={(e) => {
-          console.log('❌ Error loading image:', {
+          console.log('Error loading image:', {
             attemptedUrl: imageUrl,
             error: e.nativeEvent.error,
             postId: postData.id,
@@ -313,12 +302,11 @@ const Post = ({
           setImageError(true);
         }}
         onLoad={() => {
-          console.log('✅ Image loaded successfully:', imageUrl);
+          console.log('Image loaded successfully:', imageUrl);
           setImageError(false);
         }}
       />
 
-      {/* Действия (лайки, закладки) */}
       <View style={styles.actionsContainer}>
         <View style={styles.leftActions}>
           <TouchableOpacity 
@@ -340,13 +328,12 @@ const Post = ({
         </TouchableOpacity>
       </View>
 
-      {/* Описание поста */}
       <View style={styles.descriptionContainer}>
         <Text style={styles.descriptionText}>
           {description}
         </Text>
         {postData.placeName && (
-          <Text style={styles.locationText}>📍 {postData.placeName}</Text>
+          <Text style={styles.locationText}> {postData.placeName}</Text>
         )}
       </View>
     </View>

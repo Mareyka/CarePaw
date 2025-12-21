@@ -19,7 +19,7 @@ const TabBar = () => {
     { 
       id: 'chat', 
       icon: <Chat_icon />,
-      route: '/forums?mode=chats' // forums с параметром mode=chats
+      route: '/forums?mode=chats' 
     },
     { 
       id: 'search', 
@@ -29,17 +29,17 @@ const TabBar = () => {
     { 
       id: 'add', 
       icon: <AddPost_icon />,
-      route: '/new-post' // КОРНЕВОЙ экран new-post
+      route: '/new-post' 
     },
     { 
       id: 'home', 
       icon: <Home_icon />,
-      route: '/(tabs)/' // Главная
+      route: '/(tabs)/' 
     },
     { 
       id: 'profile', 
       icon: <Profile_icon />,
-      route: user?.id ? `/user/${user.id}` : '/' // Профиль в корне
+      route: user?.id ? `/user/${user.id}` : '/' 
     },
   ];
 
@@ -49,15 +49,12 @@ const TabBar = () => {
     if (pathname.includes('/search')) return 'search';
     if (pathname === '/new-post' || pathname.includes('/new-post')) return 'add';
     if (pathname.includes('/user/')) {
-      // Извлекаем ID из строки пути 
       const pathParts = pathname.split('/');
       const profileIdInPath = pathParts[pathParts.indexOf('user') + 1];
       
-      // Сравниваем ID в пути с ID текущего юзера
       if (user && user.id?.toString() === profileIdInPath) {
         return 'profile';
       }
-      // Если это чужой ID, возвращаем null (иконка не горит)
       return null;
     }
     if (pathname.includes('/questionnaire')) return null;
