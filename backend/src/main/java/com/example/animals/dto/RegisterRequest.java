@@ -16,7 +16,7 @@ public class RegisterRequest {
     @Size(min = 3)
     private String password;
 
-    private String description; // необязательное поле
+    private String description;
 
     // Геттеры и сеттеры
     public String getUsername() { return username; }

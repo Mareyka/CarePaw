@@ -18,9 +18,17 @@ public class Pet {
 
     private String species;
     private String breed;
+    @Column(length = 500)
+    private String temperament;
+
+    @Column(length = 1000)
+    private String careNotes;
 
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
+
+    @Column(name = "is_shelter_pet", nullable = false)
+    private boolean isShelterPet;
 
     private String photoUrl;
 
@@ -70,4 +78,14 @@ public class Pet {
 
     public List<PetEvent> getEvents() { return events; }
     public void setEvents(List<PetEvent> events) { this.events = events; }
+
+    public boolean isShelterPet() { return isShelterPet; }
+    public void setShelterPet(boolean shelterPet) { isShelterPet = shelterPet; }
+
+    public String getTemperament() { return temperament; }
+    public void setTemperament(String temperament) { this.temperament = temperament; }
+
+    public String getCareNotes() { return careNotes; }
+    public void setCareNotes(String careNotes) { this.careNotes = careNotes; }
+
 }

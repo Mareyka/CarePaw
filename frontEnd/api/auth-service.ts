@@ -30,10 +30,10 @@ class AuthService {
       const user = this.normalizeUser(userResponse);
       
       this.updateInternalState(user);
-      console.log('✅ Пользователь авторизован:', user.username);
+      console.log('Пользователь авторизован:', user.username);
       return user;
     } catch (error) {
-      console.error('❌ Ошибка авторизации:', error);
+      console.error('Ошибка авторизации:', error);
       throw error;
     } finally {
       this.setLoading(false);
@@ -51,10 +51,10 @@ class AuthService {
       // 2. Сразу сохраняем пользователя в стейт (не вызывая login повторно)
       this.updateInternalState(user);
       
-      console.log('✅ Регистрация и вход успешны:', user.username);
+      console.log('Регистрация и вход успешны:', user.username);
       return user;
     } catch (error) {
-      console.error('❌ Ошибка регистрации:', error);
+      console.error('Ошибка регистрации:', error);
       throw error;
     } finally {
       this.setLoading(false);
@@ -67,13 +67,13 @@ class AuthService {
     this.user = null;
     this.isAuthenticated = false;
     this.notifyListeners();
-    console.log('✅ Пользователь вышел из системы');
+    console.log('Пользователь вышел из системы');
   }
 
   // Упрощенная инициализация (пока просто выключает загрузку)
   async initialize(): Promise<void> {
     this.setLoading(false);
-    console.log('🚀 Система авторизации инициализирована (In-Memory mode)');
+    console.log('Система авторизации инициализирована (In-Memory mode)');
   }
 
   // Внутренний метод для обновления стейта

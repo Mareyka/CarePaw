@@ -17,6 +17,49 @@ export const useChat = (recipientId?: string) => {
     if (!senderId || !recipientId) return;
 
     let stompClient: Client;
+    const chatIdRef = { current: null as number | null };
+    let subscriptionRef: any = null;
+
+    const subscribeToChat = (client: Client, id: number) => {
+      if (subscriptionRef) {
+        subscriptionRef.unsubscribe();
+      }
+      
+      const topic = `/topic/chat.${id}`;
+      console.log(`Subscribing to ${topic}`);
+      
+      subscriptionRef = client.subscribe(topic, (payload) => {
+        const msg: ChatMessage = JSON.parse(payload.body);
+        const formatted: ChatMessage = {
+          messageId: msg.messageId?.toString() ?? Date.now().toString(),
+          chatId: msg.chatId?.toString() ?? id.toString(),
+          senderId: msg.senderId,
+          recipientId: msg.recipientId,
+          content: msg.content ?? "",
+          text: msg.text ?? msg.content ?? "",
+          timestamp: msg.timestamp ?? new Date().toISOString(),
+          isOwn: msg.senderId === senderId,
+        };
+        const isCurrentChat = 
+          formatted.chatId === id.toString() &&
+          ((formatted.senderId === senderId &&
+            formatted.recipientId.toString() === recipientId) ||
+           (formatted.recipientId === senderId &&
+            formatted.senderId.toString() === recipientId));
+        
+        if (isCurrentChat) {
+          setMessages((prev) => {
+            const exists = prev.some(m => 
+              m.messageId === formatted.messageId || 
+              (m.content === formatted.content && 
+               Math.abs(new Date(m.timestamp).getTime() - new Date(formatted.timestamp).getTime()) < 1000)
+            );
+            if (exists) return prev;
+            return [...prev, formatted];
+          });
+        }
+      });
+    };
 
     const loadHistory = async () => {
       try {
@@ -24,9 +67,24 @@ export const useChat = (recipientId?: string) => {
           `${API_URL}/chat/history?userAId=${senderId}&userBId=${recipientId}`
         );
         const raw: ChatMessage[] = await resp.json();
+        
+        if (raw.length > 0 && raw[0].chatId) {
+          chatIdRef.current = Number(raw[0].chatId);
+        } else {
+          try {
+            const createResp = await fetch(
+              `${API_URL}/chat/create?userAId=${senderId}&userBId=${recipientId}`,
+              { method: "POST" }
+            );
+            chatIdRef.current = await createResp.json();
+          } catch (e) {
+            console.error("Ошибка создания чата:", e);
+          }
+        }
+        
         const normalized = raw.map((m) => ({
-          messageId: m.messageId ?? Date.now(),
-          chatId: m.chatId,
+          messageId: m.messageId?.toString() ?? Date.now().toString(),
+          chatId: m.chatId?.toString() ?? chatIdRef.current?.toString() ?? "",
           senderId: m.senderId,
           recipientId: m.recipientId,
           content: m.content ?? "",
@@ -40,14 +98,16 @@ export const useChat = (recipientId?: string) => {
               new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
           )
         );
+        
+        if (chatIdRef.current && stompClient && stompClient.connected) {
+          subscribeToChat(stompClient, chatIdRef.current);
+        }
       } catch (e) {
         console.error("Ошибка загрузки истории:", e);
       } finally {
         setIsLoading(false);
       }
     };
-
-    loadHistory();
 
     const socketFactory = () =>
       new SockJS(`${API_URL_WITHOUT_API}/ws-chat`) as any;
@@ -57,27 +117,7 @@ export const useChat = (recipientId?: string) => {
       reconnectDelay: 5000,
       onConnect: () => {
         console.log("Connected to chat WS");
-        stompClient.subscribe(`/topic/chat.broadcast`, (payload) => {
-          const msg: ChatMessage = JSON.parse(payload.body);
-          const formatted: ChatMessage = {
-            messageId: msg.messageId ?? Date.now(),
-            chatId: msg.chatId,
-            senderId: msg.senderId,
-            recipientId: msg.recipientId,
-            content: msg.content ?? "",
-            text: msg.text ?? msg.content ?? "",
-            timestamp: msg.timestamp ?? new Date().toISOString(),
-            isOwn: msg.senderId === senderId,
-          };
-          if (
-            (formatted.senderId === senderId &&
-              formatted.recipientId.toString() === recipientId) ||
-            (formatted.recipientId === senderId &&
-              formatted.senderId.toString() === recipientId)
-          ) {
-            setMessages((prev) => [...prev, formatted]);
-          }
-        });
+        loadHistory();
       },
       onStompError: (frame) => {
         console.error("Broker error", frame.headers["message"]);
@@ -89,6 +129,9 @@ export const useChat = (recipientId?: string) => {
 
     return () => {
       console.log("WS disconnected");
+      if (subscriptionRef) {
+        subscriptionRef.unsubscribe();
+      }
       stompClient.deactivate();
     };
   }, [senderId, recipientId]);

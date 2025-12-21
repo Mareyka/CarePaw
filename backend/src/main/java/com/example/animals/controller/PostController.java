@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,7 +38,7 @@ public class PostController {
     private final PostSaveRepository postSaveRepository;
     private final UserRepository userRepository;
 
-    private static final String UPLOAD_DIR = "uploads";
+    private static final String UPLOAD_DIR = "uploads/images/posts";
 
     public PostController(PostRepository postRepository, PlaceRepository placeRepository,
                           PostLikeRepository postLikeRepository, PostSaveRepository postSaveRepository,
@@ -144,6 +145,7 @@ public class PostController {
             @RequestHeader(value = "X-User-Id", required = false) Long currentUserId) {
 
         List<PostResponseDTO> list = postRepository.findAll().stream()
+                .sorted(Comparator.comparing(Post::getCreatedAt).reversed())
                 .map(post -> mapToDetailedResponse(post, currentUserId))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(list);

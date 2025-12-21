@@ -14,6 +14,7 @@ import { GlobalStyles } from '../constants/theme';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
+// Тип для пользователя
 interface User {
   id: number;
   username: string;
@@ -35,6 +36,7 @@ const UserRecomend = () => {
       setLoading(true);
       setError(null);
       
+      // Подготавливаем заголовки
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
@@ -69,11 +71,14 @@ const UserRecomend = () => {
       console.error('Ошибка загрузки рекомендаций:', error);
       setError('Не удалось загрузить рекомендации');
       
+      // В случае ошибки оставляем заглушки, но с реальными ID
       const fallbackUsers: User[] = [
         { id: 1, username: 'Ветклиника ЗооМир', role: 'CLINIC' },
         { id: 2, username: 'Приют Дружок', role: 'SHELTER' },
         { id: 3, username: 'Мария Вет' },
         { id: 4, username: 'Александр К' },
+        { id: 5, username: 'Елена Петрова' },
+        { id: 6, username: 'Иван Иванов' },
       ];
       setRecommendedUsers(fallbackUsers);
     } finally {
@@ -104,11 +109,14 @@ const UserRecomend = () => {
   // Функция для получения URL аватара
   const getAvatarUrl = (photo?: string) => {
     if (photo && photo.trim() !== '') {
+      // Если photo уже полный URL
       if (photo.startsWith('http://') || photo.startsWith('https://')) {
         return photo;
       }
+      // Если это имя файла
       return `http://localhost:8080/uploads/${photo}`;
     }
+    // Возвращаем дефолтный цветной градиент
     return '';
   };
 
@@ -147,6 +155,7 @@ const UserRecomend = () => {
             onPress={() => handleUserPress(user.id)}
             activeOpacity={0.7}
           >
+            {/* Аватар пользователя */}
             <View style={styles.user_img}>
               {getAvatarUrl(user.photo) ? (
                 <Image 
@@ -172,6 +181,7 @@ const UserRecomend = () => {
               {user.username}
             </Text>
             
+            {/* Бейдж для ветклиник и приютов */}
             {(user.role === 'CLINIC' || user.role === 'SHELTER') && (
               <View style={styles.roleBadge}>
                 <Text style={styles.roleText}>
@@ -237,13 +247,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clinicAvatar: {
-    backgroundColor: '#4E5B3F', 
+    backgroundColor: '#4E5B3F', // Темно-зеленый для клиник
   },
   shelterAvatar: {
-    backgroundColor: '#697C44', 
+    backgroundColor: '#697C44', // Светло-зеленый для приютов
   },
   userAvatarDefault: {
-    backgroundColor: '#D0C7BA', 
+    backgroundColor: '#D0C7BA', // Бежевый для пользователей
   },
   avatarInitial: {
     fontSize: 24,

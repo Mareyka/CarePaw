@@ -1,82 +1,78 @@
 import { theme } from "@/constants/theme";
 import { buildForumChatHeaderOptions } from "@/shared/ui/header";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
 import React from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { ForumCategory } from "@/components/forum-category";
 import { ForumRow } from "@/components/forum-row";
 import { useForums } from "@/hooks/useForums";
-import SearchInput from "@/shared/ui/search-input";
 
 export default function ForumsOrChatsScreen() {
-  const { mode } = useLocalSearchParams<{ mode?: string }>();
-  const activeMode = (mode as string) || "forums";
   const router = useRouter();
-  const { categories, chats, isLoading } = useForums(
-    activeMode === "forums" ? "forums" : "chats"
+  const { chats, isLoading, refreshChats } = useForums();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshChats();
+    }, [refreshChats])
   );
 
-  const handleForumPress = (forumId: string) => {
-    if (activeMode === "chats") {
-      router.push({
-        pathname: "/chat/[id]",
-        params: { id: forumId },
-      } as any);
-    } else {
-      console.log("Navigate to forum:", forumId);
-    }
+  const handleChatPress = (recipientId: string) => {
+    router.push({
+      pathname: "/chat/[id]",
+      params: { id: recipientId },
+    } as any);
   };
+
+  const hasChats = !isLoading && chats.length > 0;
 
   return (
     <>
       <Stack.Screen options={buildForumChatHeaderOptions()} />
 
-      {activeMode === "forums" ? (
-        <ScrollView contentContainerStyle={styles.container}>
-          <View>
-              <SearchInput
-               placeholder = {"Поиск по тематике..."}/>
-            </View>
-          {isLoading ? (
-            <View />
-          ) : (
-            categories.map((category) => (
-              <ForumCategory
-                key={category.id}
-                category={category}
-                onForumPress={handleForumPress}
+      <View style={styles.wrapper}>
+        <ScrollView 
+          contentContainerStyle={[
+            styles.container,
+            !hasChats && styles.containerEmpty
+          ]}
+          style={!hasChats && styles.scrollViewEmpty}
+        >
+          {isLoading ? null : hasChats ? (
+            chats.map((chat) => (
+              <ForumRow
+                key={chat.id}
+                title={chat.title}
+                lastMessage={chat.lastMessage}
+                avatarUri={chat.avatarUri}
+                onPress={() => handleChatPress(chat.recipientId.toString())}
               />
             ))
-          )}
+          ) : null}
         </ScrollView>
-      ) : (
-        <ScrollView contentContainerStyle={styles.container}>
-          <View>
-            {isLoading
-              ? null
-              : chats.map((chat) => (
-                  <ForumRow
-                    key={chat.id}
-                    title={chat.title}
-                    lastMessage={chat.lastMessage}
-                    avatarUri={chat.avatarUri}
-                    onPress={() => handleForumPress(chat.recipientId.toString())}
-                  />
-                ))}
-          </View>
-        </ScrollView>
-      )}
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: theme.color.appBackground,
+  },
   container: {
     paddingHorizontal: 12,
     paddingBottom: 24,
     paddingTop: 8,
     backgroundColor: theme.color.appBackground,
     gap: 8,
+  },
+  containerEmpty: {
+    paddingTop: 0,
+    minHeight: 0,
+    backgroundColor: theme.color.appBackground,
+  },
+  scrollViewEmpty: {
+    backgroundColor: theme.color.appBackground,
   },
 });
 

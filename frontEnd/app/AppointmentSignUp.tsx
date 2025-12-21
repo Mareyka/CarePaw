@@ -9,7 +9,7 @@ import {
   ScrollView 
 } from 'react-native';
 import PetCalendarWidget from '../components/pet-calendar/PetCalendarWidget';
-import Button from '../components/Button'; // Используем твой компонент Button
+import Button from '../components/Button';
 
 interface AppointmentSignUpProps {
   visible: boolean;
@@ -32,10 +32,10 @@ export default function AppointmentSignUp({ visible, onClose }: AppointmentSignU
     [selectedDate]: { selected: true, selectedColor: '#A4B88C' }
   };
 
-  // Функция закрытия, которая сбрасывает состояние успеха
+  
   const handleClose = () => {
     onClose();
-    // Небольшая задержка, чтобы пользователь не видел смену контента во время анимации закрытия
+  
     setTimeout(() => setIsSubmitted(false), 300);
   };
 
@@ -81,7 +81,7 @@ export default function AppointmentSignUp({ visible, onClose }: AppointmentSignU
 
               <Button 
                 title="Записаться" 
-                onPress={() => setIsSubmitted(true)} // Переключаем на экран успеха
+                onPress={() => setIsSubmitted(true)} 
                 style={styles.submitButton}
               />
             </ScrollView>
@@ -118,7 +118,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#ECE1D1", 
     width: '90%',
-    minHeight: 300, // Чтобы карточка не прыгала по высоте сильно
     padding: 24,
     borderRadius: 40,
     position: 'relative',
@@ -158,7 +157,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEB16E",
     borderRadius: 30,
     marginTop: 10,
-    marginHorizontal: 0, // Перебиваем отступы из твоего компонента Button
+    marginHorizontal: 0, 
   },
   /* Стили для окна успеха */
   successContainer: {
@@ -171,7 +170,7 @@ const styles = StyleSheet.create({
     color: "#4E5B3F",
     textAlign: 'center',
     lineHeight: 24,
-    fontFamily: 'inglobal', // Если используешь этот шрифт
+    fontFamily: 'inglobal', 
   },
   successSubText: {
     fontSize: 18,
@@ -184,7 +183,7 @@ const styles = StyleSheet.create({
   successButton: {
     backgroundColor: "#EEB16E",
     borderRadius: 30,
-    width: 180, // Делаем кнопку поуже как на фото
+    width: 180, 
     marginHorizontal: 0,
   }
 });

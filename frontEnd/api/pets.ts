@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 
 const API_URL = 'http://localhost:8080/api';
+// const API_URL = 'http://10.0.2.2:8080/api';
 
 export type Pet = {
   id: number;
@@ -10,6 +11,9 @@ export type Pet = {
   breed?: string | null;
   dateOfBirth?: string | null;
   photoUrl?: string | null;
+  temperament?: string | null;
+  careNotes?: string | null;
+  isShelterPet?: boolean;
   sterilized?: boolean;
   vaccinated?: boolean;
   dewormed?: boolean;
@@ -21,6 +25,9 @@ export type CreatePetInput = {
   breed?: string;
   dateOfBirth?: string; // YYYY-MM-DD
   photoUrl?: string | null;
+  temperament?: string;
+  careNotes?: string;
+  isShelterPet?: boolean;
   sterilized?: boolean;
   vaccinated?: boolean;
   dewormed?: boolean;

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Image, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Image, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 
 const API_BASE_URL = 'http://localhost:8080/api';
+// const API_BASE_URL = 'http://10.0.2.2:8080/api';
 
 // Иконка лайка 
 const LikeIcon = ({ filled = false }) => (
@@ -73,7 +74,9 @@ const Post = ({
   const [loadingLike, setLoadingLike] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [userAvatarUrl, setUserAvatarUrl] = useState<string>('');
+  const [userPhoto, setUserPhoto] = useState<string>('');
+  const [userPhotoLoading, setUserPhotoLoading] = useState(false);
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
 
   // Функция для получения правильного URL изображения поста
   const getImageUrl = () => {
@@ -89,42 +92,112 @@ const Post = ({
       return postData.photoUrl;
     }
     
-    return `http://localhost:8080/api/images/posts/${postData.photoUrl}`;
+    return `http://10.0.2.2:8080/api/images/posts/${postData.photoUrl}`;
   };
 
-  // Функция для получения URL аватара пользователя
-  const fetchUserAvatar = async () => {
-    if (!postData?.userId) return;
+  // Функция для получения фото пользователя
+  const fetchUserPhoto = async () => {
+    if (!postData?.userId || userPhoto) return;
     
     try {
-      // Если в postData уже есть userPhoto, используем его
+      setUserPhotoLoading(true);
+      setAvatarLoadError(false);
+      
+      // Пробуем несколько эндпоинтов для получения фото пользователя
+      
+      // Вариант 1: Если у нас уже есть userPhoto в postData
       if (postData.userPhoto) {
-        const url = postData.userPhoto.startsWith('http://') || postData.userPhoto.startsWith('https://')
-          ? postData.userPhoto
+        const fullPhotoUrl = postData.userPhoto.startsWith('http') 
+          ? postData.userPhoto 
           : `http://localhost:8080/uploads/${postData.userPhoto}`;
-        setUserAvatarUrl(url);
+        setUserPhoto(fullPhotoUrl);
         return;
       }
       
-      // Если нет userPhoto, пробуем получить пользователя по ID
-      const response = await fetch(`${API_BASE_URL}/me?email=`, {
-        headers: {
-          'X-User-Id': postData.userId.toString()
+      // Вариант 2: Пробуем получить через /users/{id} endpoint
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/${postData.userId}`, {
+          headers: {
+            'X-User-Id': user?.id?.toString() || ''
+          }
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          const photoUrl = userData.photo;
+          
+          if (photoUrl) {
+            // Формируем полный URL
+            const fullPhotoUrl = photoUrl.startsWith('http') 
+              ? photoUrl 
+              : `http://localhost:8080/uploads/${photoUrl}`;
+            setUserPhoto(fullPhotoUrl);
+            return;
+          }
         }
-      });
-      
-      if (response.ok) {
-        const userData = await response.json();
-        if (userData.photo) {
-          const url = userData.photo.startsWith('http://') || userData.photo.startsWith('https://')
-            ? userData.photo
-            : `http://localhost:8080/uploads/${userData.photo}`;
-          setUserAvatarUrl(url);
-        }
+      } catch (apiError) {
+        console.log('Could not fetch user from /users/{id} endpoint:', apiError);
       }
+      
+      // Вариант 3: Пробуем получить через /me endpoint (как было в оригинальном коде)
+      try {
+        const response = await fetch(`${API_BASE_URL}/me?email=`, {
+          headers: {
+            'X-User-Id': postData.userId.toString()
+          }
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.photo) {
+            const url = userData.photo.startsWith('http://') || userData.photo.startsWith('https://')
+              ? userData.photo
+              : `http://localhost:8080/uploads/${userData.photo}`;
+            setUserPhoto(url);
+            return;
+          }
+        }
+      } catch (meError) {
+        console.log('Could not fetch user from /me endpoint:', meError);
+      }
+      
+      // Если все варианты не сработали, создаем цветной аватар
+      setAvatarLoadError(true);
+      
     } catch (error) {
-      console.log('Could not fetch user avatar:', error);
+      console.log('Could not fetch user photo:', error);
+      setAvatarLoadError(true);
+    } finally {
+      setUserPhotoLoading(false);
     }
+  };
+
+  // Создаем цветной аватар с инициалами
+  const generateColorAvatar = () => {
+    if (!postData?.userId || !postData?.username) return '';
+    
+    const colors = ['#4E5B3F', '#697C44', '#D0C7BA', '#8B7355', '#A0522D', '#6B8E23'];
+    const colorIndex = postData.userId % colors.length;
+    
+    // Берем первую букву имени пользователя
+    const initial = postData.username.charAt(0).toUpperCase();
+    
+    // Генерируем URL для цветного аватара
+    return `https://ui-avatars.com/api/?name=${initial}&background=${colors[colorIndex].replace('#', '')}&color=fff&size=48`;
+  };
+
+  // Получаем URL для аватара пользователя
+  const getUserAvatarUrl = () => {
+    if (userPhotoLoading) {
+      return '';
+    }
+    
+    if (userPhoto && !avatarLoadError) {
+      return userPhoto;
+    }
+    
+    // Если не удалось загрузить фото, используем цветной аватар
+    return generateColorAvatar();
   };
 
   // Функция перехода на профиль пользователя
@@ -146,7 +219,8 @@ const Post = ({
       setSaved(postData.savedByCurrentUser || false);
       setImageError(false);
       
-      fetchUserAvatar();
+      // Загружаем фото пользователя
+      fetchUserPhoto();
     }
   }, [postData]);
 
@@ -251,26 +325,40 @@ const Post = ({
   }
 
   const imageUrl = getImageUrl();
-  const username = postData.username || '_.username._';
+  const username = postData.username || 'Пользователь';
   const description = postData.title || 'Описание поста будет здесь...';
+  const avatarUrl = getUserAvatarUrl();
 
   return (
     <View style={styles.container}>
       <View style={styles.actionsContainer}>
         <View style={styles.leftActions}>
-          <TouchableOpacity onPress={navigateToUserProfile}>
-            <Image 
-              source={{ 
-                uri: userAvatarUrl || 'https://via.placeholder.com/24',
-                cache: 'force-cache'
-              }} 
-              style={styles.userimg}
-              resizeMode="cover"
-              defaultSource={require('@/assets/images/default_avatar.png')}
-              onError={() => {
-                setUserAvatarUrl('https://via.placeholder.com/24');
-              }}
-            />
+          <TouchableOpacity onPress={navigateToUserProfile} style={styles.avatarContainer}>
+            {userPhotoLoading ? (
+              <View style={[styles.userimg, styles.loadingAvatar]}>
+                <ActivityIndicator size="small" color="#4E5B3F" />
+              </View>
+            ) : avatarUrl ? (
+              <Image 
+                source={{ 
+                  uri: avatarUrl,
+                  cache: 'force-cache'
+                }} 
+                style={styles.userimg}
+                resizeMode="cover"
+                defaultSource={require('@/assets/images/default_avatar.png')}
+                onError={() => {
+                  console.log('Error loading avatar, using default');
+                  setAvatarLoadError(true);
+                }}
+              />
+            ) : (
+              <View style={[styles.userimg, styles.defaultAvatarBackground]}>
+                <Text style={styles.defaultAvatarText}>
+                  {username.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
           
           <TouchableOpacity onPress={navigateToUserProfile}>
@@ -357,6 +445,25 @@ const styles = StyleSheet.create({
     height: 24,
     backgroundColor: '#fff',
     borderRadius: 24,
+    overflow: 'hidden',
+  },
+  loadingAvatar: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+  },
+  defaultAvatarBackground: {
+    backgroundColor: '#4E5B3F',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  defaultAvatarText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  avatarContainer: {
+    marginRight: 8,
   },
   actionsContainer: {
     width: '100%',

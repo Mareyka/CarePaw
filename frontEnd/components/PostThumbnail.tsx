@@ -14,6 +14,7 @@ const PostThumbnail = ({ photoUrl, onPress }: PostThumbnailProps) => {
   // Логика формирования URL (такая же, как в твоем основном компоненте Post)
   const imageUrl = photoUrl?.startsWith('http') 
     ? photoUrl 
+    // : `http://10.0.2.2:8080/api/images/posts/${photoUrl}`;
     : `http://localhost:8080/api/images/posts/${photoUrl}`;
 
   return (

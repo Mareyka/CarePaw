@@ -6,6 +6,7 @@ import TabBar from '../../components/TabBar';
 import Post from '../../components/Post';
 
 const API_BASE_URL = 'http://localhost:8080/api';
+// const API_BASE_URL = 'http://10.0.2.2:8080/api';
 
 type PostType = {
   id: number;
@@ -66,7 +67,7 @@ export default function UrgentScreen() {
         id: post.id,
         title: post.title || 'Без названия',
         photoUrl: post.photoUrl || '',
-        fullPhotoUrl: post.fullPhotoUrl || post.photoUrl,
+        fullPhotoUrl: post.fullPhotoUrl || undefined, // Если fullPhotoUrl null, не используем photoUrl, пусть фронтенд сам формирует URL
         userId: post.userId || 0,
         username: post.username || 'Неизвестный',
         placeName: post.placeName || 'Местоположение не указано',

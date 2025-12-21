@@ -1,7 +1,9 @@
 import { Alert } from 'react-native';
 
 export const API_URL = 'http://localhost:8080/api';
-export const API_URL_WITHOUT_API = 'http://10.0.2.2:8080';
+// export const API_URL = 'http://10.0.2.2:8080/api';
+export const API_URL_WITHOUT_API = 'http://localhost:8080';
+// export const API_URL_WITHOUT_API = 'http://10.0.2.2:8080';
 
 export interface RegisterData {
   username: string;
@@ -26,28 +28,23 @@ class ApiService {
   // Данные пользователя храним в памяти для текущей сессии
   private currentUser: UserResponse | null = null;
 
-  // Вспомогательный метод для обработки ошибок сервера
   private async handleError(response: Response) {
     const responseText = await response.text();
     let message = 'Произошла ошибка';
 
     try {
-      // Пытаемся распарсить JSON, если сервер прислал его (например, { "message": "..." })
       const parsed = JSON.parse(responseText);
       message = parsed.message || parsed;
     } catch (e) {
-      // Если это просто строка (как "Email already used")
       message = responseText;
     }
 
-    // Локализация стандартных ошибок бэкенда
     if (message.includes('Email already used')) message = 'Этот email уже зарегистрирован';
     if (message.includes('Username already used')) message = 'Это имя пользователя уже занято';
     if (message.includes('Invalid credentials')) message = 'Неверный логин или пароль';
     if (message === 'Unauthorized') message = 'Ошибка авторизации';
 
     const error = new Error(message);
-    // Добавляем флаг, чтобы в UI понимать, что это ошибка валидации/логики
     (error as any).isApiError = true;
     throw error;
   }
@@ -78,7 +75,7 @@ class ApiService {
     const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: identifier, password }), // бэкенд ждет email
+      body: JSON.stringify({ email: identifier, password }),
     });
 
     if (!response.ok) {
@@ -90,7 +87,6 @@ class ApiService {
     return this.currentUser;
   }
 
-  // Нормализация (убираем лишнее, ставим дефолты)
   private normalizeUserResponse(userData: UserResponse): UserResponse {
     return {
       ...userData,
@@ -112,6 +108,45 @@ class ApiService {
       return null;
     }
   }
+
+async updateUser(userId: string, data: { username: string, description: string, photo?: string }) {
+  const formData = new FormData();
+  
+  formData.append("username", data.username);
+  formData.append("description", data.description);
+
+  // ПРОВЕРКА: Если фото есть и это локальный файл (выбранный в галерее)
+if (data.photo && !data.photo.startsWith('http')) {
+    const localUri = data.photo; 
+
+    
+    if (localUri.startsWith('blob:') || localUri.startsWith('data:')) {
+        const response = await fetch(localUri);
+        const blob = await response.blob();
+        formData.append("photoFile", blob, `avatar_${userId}.jpg`);
+    } else {
+       
+        formData.append("photoFile", {
+            uri: localUri, 
+            name: `avatar_${userId}.jpg`,
+            type: 'image/jpeg',
+        } as any);
+    }
+    console.log("📤 Файл добавлен в FormData");
+
+  }
+
+  const response = await fetch(`${API_URL}/users/${userId}`, {
+    method: 'PUT',
+    body: formData,
+  });
+
+  if (!response.ok) {
+     const errorText = await response.text();
+     throw new Error(errorText || "Ошибка при обновлении");
+  }
+  return await response.json();
+}
 
   // Проверка статуса подписки
   async checkSubscription(followingId: string | number): Promise<{ subscribed: boolean }> {
